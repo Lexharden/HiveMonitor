@@ -1,6 +1,6 @@
-import type { ConnectionStatus, NormalizedEvent, Permission, Platform } from "@hivemonitor/core";
+import type { AlertPayload, ConnectionStatus, HeartbeatPayload, NormalizedEvent, Permission, Platform } from "@hivemonitor/core";
 
-export type { NormalizedEvent, Permission, Platform, ConnectionStatus };
+export type { AlertPayload, HeartbeatPayload, NormalizedEvent, Permission, Platform, ConnectionStatus };
 
 // --- Tipos de la API ---------------------------------------------------------
 export interface Me {
@@ -65,6 +65,8 @@ export type StreamMessage =
   | { type: "snapshot"; data: Snapshot }
   | { type: "event"; data: NormalizedEvent }
   | { type: "status"; data: { platform: Platform; channelId: string; status: ConnectionStatus; at: string; detail?: string } }
+  | { type: "alert"; data: AlertPayload }
+  | { type: "heartbeat"; data: HeartbeatPayload }
   | { type: "state"; state: "connecting" | "open" | "closed" };
 
 export interface Totals {
@@ -116,6 +118,68 @@ export interface Donor {
   amountMinor: number;
   usdMinorEstimate: number;
   count: number;
+}
+
+export type AlertType = "donation_over" | "viewers_drop" | "platform_disconnect" | "heartbeat_lost";
+export interface AlertRule {
+  id: string;
+  type: AlertType;
+  name: string;
+  params: Record<string, number | string | undefined>;
+  channels: ("panel" | "native" | "webhook")[];
+  enabled: boolean;
+  hasWebhook: boolean;
+}
+export interface AlertRuleInput {
+  type: AlertType;
+  name: string;
+  params: Record<string, unknown>;
+  channels: string[];
+  webhookUrl?: string | null;
+}
+export interface AlertEventRow {
+  id: string;
+  ruleId: string | null;
+  firedAt: string;
+  message: string;
+  type: AlertType;
+  ruleName: string;
+}
+export interface MemberRow {
+  id: string;
+  userId: string;
+  role: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+export interface InvitationRow {
+  id: string;
+  email: string;
+  role: string | null;
+  expiresAt: string;
+  link: string;
+}
+export interface AuditEntry {
+  id: string;
+  action: string;
+  target: string | null;
+  at: string;
+  actorUserId: string | null;
+  meta: Record<string, unknown>;
+}
+export interface HeartbeatSource {
+  source: string;
+  at: string;
+  metrics: Record<string, unknown>;
+}
+export interface SystemInfo {
+  uptimeSec: number;
+  memory: { rssMb: number; heapUsedMb: number };
+  connections: { total: number; byStatus: Record<string, number>; queued: number; rateLimitHits: number; cooldownMs: Record<string, number> };
+  subscribers: number | null;
+  errors: { at: string; level: string; msg: string; detail?: string }[];
+  connectionList: { id: string; tenantId: string; platform: Platform; status: ConnectionStatus; detail?: string; attempts: number }[];
 }
 
 export class ApiError extends Error {
@@ -212,6 +276,10 @@ export function createClient(opts: ClientOptions = {}) {
       create: (name: string, slug: string) => post<{ id: string }>("/api/auth/organization/create", { name, slug }),
       setActive: (organizationId: string) => post("/api/auth/organization/set-active", { organizationId }),
       acceptInvitation: (invitationId: string) => post("/api/auth/organization/accept-invitation", { invitationId }),
+      invite: (organizationId: string, email: string, role: string) => post<{ id: string }>("/api/auth/organization/invite-member", { organizationId, email, role }),
+      cancelInvitation: (invitationId: string) => post("/api/auth/organization/cancel-invitation", { invitationId }),
+      updateRole: (organizationId: string, memberId: string, role: string) => post("/api/auth/organization/update-member-role", { organizationId, memberId, role }),
+      removeMember: (organizationId: string, memberIdOrEmail: string) => post("/api/auth/organization/remove-member", { organizationId, memberIdOrEmail }),
     },
 
     // --- Tenant ---
@@ -238,14 +306,33 @@ export function createClient(opts: ClientOptions = {}) {
           topDonors: (days: number, limit = 10, platform?: Platform) =>
             json<{ from: string; donors: Donor[] }>(t(orgId, `/analytics/top-donors?days=${days}&limit=${limit}${platform ? `&platform=${platform}` : ""}`)),
         },
+        members: {
+          list: () => json<{ members: MemberRow[]; invitations: InvitationRow[]; emailEnabled: boolean }>(t(orgId, "/members")),
+          transferOwnership: (memberId: string) => post(t(orgId, "/members/transfer-ownership"), { memberId }),
+        },
+        alerts: {
+          rules: () => json<{ rules: AlertRule[] }>(t(orgId, "/alerts/rules")),
+          create: (r: AlertRuleInput) => post<{ id: string }>(t(orgId, "/alerts/rules"), r),
+          update: (id: string, patch: Partial<AlertRuleInput> & { enabled?: boolean }) => json(t(orgId, `/alerts/rules/${id}`), { method: "PATCH", body: JSON.stringify(patch) }),
+          remove: (id: string) => json(t(orgId, `/alerts/rules/${id}`), { method: "DELETE" }),
+          test: (id: string) => post(t(orgId, `/alerts/rules/${id}/test`)),
+          events: (limit = 30) => json<{ events: AlertEventRow[] }>(t(orgId, `/alerts/events?limit=${limit}`)),
+        },
+        heartbeat: {
+          sources: () => json<{ sources: HeartbeatSource[] }>(t(orgId, "/heartbeats")),
+          tokens: () => json<{ tokens: { id: string; label: string; lastUsedAt: string | null; createdAt: string }[] }>(t(orgId, "/heartbeat/tokens")),
+          createToken: (label: string) => post<{ id: string; token: string }>(t(orgId, "/heartbeat/tokens"), { label }),
+          revokeToken: (id: string) => json(t(orgId, `/heartbeat/tokens/${id}`), { method: "DELETE" }),
+        },
         live: () => json<{ channels: LiveChannel[]; connections: RuntimeConnection[]; serverTime: string }>(t(orgId, "/live")),
-        audit: (limit = 50) => json<{ entries: { id: string; action: string; target: string | null; at: string; actorUserId: string | null; meta: unknown }[] }>(t(orgId, `/audit?limit=${limit}`)),
+        audit: (limit = 50) => json<{ entries: AuditEntry[] }>(t(orgId, `/audit?limit=${limit}`)),
         stream: (onMessage: (m: StreamMessage) => void) => openStream(orgId, onMessage),
         socket: () => openSocket(orgId),
       };
     },
     admin: {
-      tenants: () => json<{ tenants: { id: string; name: string; slug: string; suspended: boolean | null; members: number; limits: unknown; createdAt: string }[] }>("/api/admin/tenants"),
+      tenants: () => json<{ tenants: { id: string; name: string; slug: string; suspended: boolean | null; members: number; limits: { maxConnections?: number } | null; createdAt: string; connections: number; live: number }[] }>("/api/admin/tenants"),
+      system: () => json<SystemInfo>("/api/admin/system"),
       patchTenant: (id: string, body: { suspended?: boolean; limits?: Record<string, unknown> }) =>
         json(`/api/admin/tenants/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     },
@@ -275,6 +362,8 @@ export function createClient(opts: ClientOptions = {}) {
             if (m.event === "snapshot") onMessage({ type: "snapshot", data: m.data as Snapshot });
             else if (m.event === "event") onMessage({ type: "event", data: reviveEvent(m.data) });
             else if (m.event === "status") onMessage({ type: "status", data: m.data as never });
+            else if (m.event === "alert") onMessage({ type: "alert", data: m.data as AlertPayload });
+            else if (m.event === "heartbeat") onMessage({ type: "heartbeat", data: m.data as HeartbeatPayload });
           }
         } catch (err) {
           if (stopped || (err as Error).name === "AbortError") break;

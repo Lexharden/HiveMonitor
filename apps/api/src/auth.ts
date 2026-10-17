@@ -4,7 +4,10 @@ import { bearer } from "better-auth/plugins/bearer";
 import { organization } from "better-auth/plugins/organization";
 import { schema, type Database } from "@hivemonitor/db";
 import { ac, orgRoles } from "./access.ts";
+import { auditAdmin } from "./audit.ts";
+import { createMailer } from "./mailer.ts";
 import { isProd, type Config } from "./config.ts";
+import { actorStore } from "./audit.ts";
 import type { Logger } from "./logger.ts";
 
 export interface AuthDeps {
@@ -17,6 +20,9 @@ export interface AuthDeps {
 }
 
 export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) {
+  const mail = createMailer(config, logger);
+  const actorId = () => actorStore.getStore()?.userId ?? null;
+  const log = (e: Parameters<typeof auditAdmin>[1]) => auditAdmin(adminDb, e).catch((err) => logger.error({ err }, "no se pudo registrar la auditoría"));
   const social: Record<string, { clientId: string; clientSecret: string }> = {};
   if (config.TWITCH_CLIENT_ID && config.TWITCH_CLIENT_SECRET) {
     social.twitch = { clientId: config.TWITCH_CLIENT_ID, clientSecret: config.TWITCH_CLIENT_SECRET };
@@ -81,24 +87,41 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
         organizationHooks: {
           afterCreateOrganization: async ({ organization: org, user }) => {
             await adminDb.insert(schema.tenantSettings).values({ tenantId: org.id }).onConflictDoNothing();
-            await adminDb.insert(schema.auditLog).values({
-              id: crypto.randomUUID(),
-              tenantId: org.id,
-              actorUserId: user.id,
-              action: "org.create",
-              target: org.id,
-            });
+            await auditAdmin(adminDb, { tenantId: org.id, actorUserId: user.id, action: "org.create", target: org.id });
+          },
+          afterUpdateOrganization: async ({ organization: org }) => {
+            if (org) await log({ tenantId: org.id, actorUserId: null, action: "org.update", target: org.id });
+          },
+          beforeDeleteOrganization: async ({ organization: org }) => {
+            // El audit_log del tenant se borra en cascada con la organización: queda constancia en el log del servidor
+            logger.warn({ org: org.id, name: org.name, actor: actorId() }, "organización eliminada");
+          },
+          afterUpdateMemberRole: async ({ member, previousRole, user, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: null, action: "member.role_change", target: member.id, meta: { member: user.email, from: previousRole, to: member.role } });
+          },
+          afterRemoveMember: async ({ member, user, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: null, action: "member.remove", target: member.id, meta: { member: user.email, role: member.role } });
+          },
+          afterAddMember: async ({ member, user, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: null, action: "member.add", target: member.id, meta: { member: user.email, role: member.role } });
+          },
+          afterCreateInvitation: async ({ invitation, inviter, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: inviter.id, action: "invitation.create", target: invitation.id, meta: { email: invitation.email, role: invitation.role } });
+          },
+          afterCancelInvitation: async ({ invitation, cancelledBy, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: cancelledBy.id, action: "invitation.cancel", target: invitation.id, meta: { email: invitation.email } });
+          },
+          afterAcceptInvitation: async ({ invitation, user, organization: org }) => {
+            await log({ tenantId: org.id, actorUserId: user.id, action: "invitation.accept", target: invitation.id, meta: { email: user.email, role: invitation.role } });
           },
         },
         sendInvitationEmail: async (data) => {
           const link = `${config.BASE_URL}/accept-invitation/${data.id}`;
           logger.info({ email: data.email, org: data.organization.name }, "invitación creada");
-          await onInvitation?.({
-            email: data.email,
-            role: data.role,
-            organizationName: data.organization.name,
-            link,
-          });
+          const payload = { email: data.email, role: data.role, organizationName: data.organization.name, link };
+          await onInvitation?.(payload);
+          // El correo es opcional y no debe hacer fallar la invitación (el enlace también se muestra en el panel)
+          await mail?.(payload).catch((err) => logger.warn({ err: (err as Error).message }, "no se pudo enviar el correo de invitación"));
         },
       }),
     ],

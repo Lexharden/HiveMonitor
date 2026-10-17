@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { actorStore } from "./audit.ts";
 import type { AppDeps, AppEnv } from "./context.ts";
+import { authHeaders } from "./middleware.ts";
 import { corsMiddleware, originCheck, rateLimit, requestContext, requireUser, securityHeaders, wsOriginGuard } from "./middleware.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { healthRoutes } from "./routes/health.ts";
+import { heartbeatIngestRoutes } from "./routes/heartbeat.ts";
 import { meRoutes } from "./routes/me.ts";
 import { tenantRoutes } from "./routes/tenant.ts";
 import { twitchCallbackRoutes, twitchWebhookRoutes } from "./routes/twitch.ts";
@@ -22,12 +25,19 @@ export function createApp(deps: AppDeps) {
   app.route("/webhooks/twitch", twitchWebhookRoutes(deps));
 
   // Better Auth. Se sobrescribe X-Forwarded-For con la IP ya validada para que no sea falsificable.
-  app.on(["GET", "POST"], "/api/auth/*", (c) => {
+  app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const headers = new Headers(c.req.raw.headers);
     headers.set("x-forwarded-for", c.get("ip"));
-    return deps.auth.handler(new Request(c.req.raw, { headers }));
+    const req = new Request(c.req.raw, { headers });
+    // Acciones de organización: se registra quién las ejecuta para que los ganchos de auditoría lo sepan
+    if (c.req.method === "POST" && c.req.path.startsWith("/api/auth/organization/")) {
+      const session = await deps.auth.api.getSession({ headers: authHeaders(headers) }).catch(() => null);
+      return actorStore.run({ userId: session?.user.id ?? null, ip: c.get("ip") }, () => deps.auth.handler(req));
+    }
+    return deps.auth.handler(req);
   });
 
+  app.route("/api/heartbeat", heartbeatIngestRoutes(deps));
   app.route("/api/integrations", twitchCallbackRoutes(deps));
   app.route("/api", meRoutes(deps));
   app.route("/api/admin", adminRoutes(deps));

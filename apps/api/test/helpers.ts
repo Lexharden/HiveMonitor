@@ -8,6 +8,7 @@ import { loadConfig } from "../src/config.ts";
 import type { AppDeps } from "../src/context.ts";
 import { createIngest } from "../src/ingest/manager.ts";
 import { createTwitchService } from "../src/twitch/service.ts";
+import { AlertEngine } from "../src/alerts/engine.ts";
 import { createEncryptorFromEnv } from "../src/crypto.ts";
 import { createLogger } from "../src/logger.ts";
 
@@ -30,6 +31,7 @@ export interface TestEnv {
 export async function createTestEnv(
   extra: Record<string, string> = {},
   twitchFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+  alertsFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<TestEnv> {
   const pg = await startTestPostgres();
   const config = loadConfig({
@@ -57,6 +59,8 @@ export async function createTestEnv(
   const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
   const twitch = createTwitchService({ config, logger, adminDb: admin.db, encryptor, fetch: twitchFetch });
   const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor, factories: twitch ? { twitch: twitch.factory } : undefined });
+  const alerts = new AlertEngine({ appDb: app.db, bus, encryptor, logger, fetch: alertsFetch });
+  alerts.attach(ingest.pipeline, ingest.supervisor);
   const deps: AppDeps = {
     config,
     logger,
@@ -66,6 +70,7 @@ export async function createTestEnv(
     auth,
     bus,
     ingest,
+    alerts,
     twitch,
     encryptor,
   };
@@ -100,6 +105,7 @@ export async function createTestEnv(
       return token;
     },
     async stop() {
+      deps.alerts.close();
       deps.twitch?.stop();
       await deps.ingest.close();
       await deps.bus.close();

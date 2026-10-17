@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { schema } from "@hivemonitor/db";
 import type { AppDeps, AppEnv } from "../context.ts";
+import { recentErrors } from "../logger.ts";
 import { requireSuperadmin, requireUser } from "../middleware.ts";
 
 const patchSchema = z.object({
@@ -30,7 +31,13 @@ export function adminRoutes(deps: AppDeps) {
       .leftJoin(schema.tenantSettings, eq(schema.tenantSettings.tenantId, schema.organization.id))
       .leftJoin(schema.member, eq(schema.member.organizationId, schema.organization.id))
       .groupBy(schema.organization.id, schema.tenantSettings.tenantId);
-    return c.json({ tenants: rows });
+    const conns = deps.ingest.supervisor.list();
+    return c.json({
+      tenants: rows.map((t) => {
+        const mine = conns.filter((x) => x.tenantId === t.id);
+        return { ...t, connections: mine.length, live: mine.filter((x) => x.status === "live").length };
+      }),
+    });
   });
 
   /** Salud del sistema: conexiones por estado, cola, rate limits y recursos del proceso. */
@@ -41,6 +48,7 @@ export function adminRoutes(deps: AppDeps) {
       memory: { rssMb: Math.round(mem.rss / 1048576), heapUsedMb: Math.round(mem.heapUsed / 1048576) },
       connections: deps.ingest.supervisor.stats(),
       subscribers: (deps.bus as { subscriberCount?: () => number }).subscriberCount?.() ?? null,
+      errors: [...recentErrors].reverse().slice(0, 30),
       connectionList: deps.ingest.supervisor.list().map((x) => ({ id: x.id, tenantId: x.tenantId, platform: x.platform, status: x.status, detail: x.detail, attempts: x.attempts })),
     });
   });

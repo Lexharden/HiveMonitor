@@ -27,6 +27,7 @@
     "@hivemonitor/client": "workspace:*",
     "@hivemonitor/core": "workspace:*",
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
     "@tauri-apps/plugin-notification": "^2.7.0",
     "@tauri-apps/plugin-opener": "^2.7.2",
     "@tauri-apps/plugin-store": "^2.5.0"

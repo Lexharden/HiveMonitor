@@ -145,6 +145,7 @@ class ManagedConnection {
     const change: StatusChange = { status, at: new Date(), detail };
     void this.sup.o.bus.publish({ kind: "status", tenantId: this.spec.tenantId, platform: this.spec.platform, channelId: this.spec.channelId, change });
     if (changed) {
+      this.sup.notifyStatus(this.spec, status, detail);
       Promise.resolve(this.sup.o.onStatusChange?.(this.spec, status, detail)).catch((err) =>
         this.sup.o.logger.warn({ err, id: this.spec.id }, "no se pudo guardar el estado de la conexión"),
       );
@@ -260,10 +261,27 @@ export class Supervisor {
   private readonly conns = new Map<string, ManagedConnection>();
   private readonly sems = new Map<Platform, Semaphore>();
   private readonly cooldownUntil = new Map<Platform, number>();
+  private readonly statusListeners = new Set<(spec: ConnectionSpec, status: ConnectionStatus, detail?: string) => void>();
   private rateLimitHits = 0;
   constructor(readonly o: SupervisorOptions) {
     for (const [p, n] of Object.entries(o.connectConcurrency ?? {})) {
       if (n && n > 0) this.sems.set(p as Platform, new Semaphore(n));
+    }
+  }
+
+  /** Observador de cambios de estado de todas las conexiones (alertas). */
+  addStatusListener(fn: (spec: ConnectionSpec, status: ConnectionStatus, detail?: string) => void): () => void {
+    this.statusListeners.add(fn);
+    return () => this.statusListeners.delete(fn);
+  }
+
+  notifyStatus(spec: ConnectionSpec, status: ConnectionStatus, detail?: string): void {
+    for (const fn of this.statusListeners) {
+      try {
+        fn(spec, status, detail);
+      } catch (err) {
+        this.o.logger.error({ err }, "observador de estado falló");
+      }
     }
   }
 

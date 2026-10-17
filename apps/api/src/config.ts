@@ -45,6 +45,9 @@ const envSchema = z.object({
   TWITCH_EVENTSUB_MODE: z.enum(["webhook", "websocket"]).optional(),
   /** Secreto de firma de webhooks (10-100 caracteres). Si falta se deriva de BETTER_AUTH_SECRET. */
   TWITCH_EVENTSUB_SECRET: z.string().min(10).max(100).optional(),
+  /** Servidor SMTP para invitaciones por correo, p. ej. smtps://usuario:clave@smtp.ejemplo.com. Opcional. */
+  SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
   EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).default(60),
   METRICS_TOKEN: z.string().min(16).optional(),
   /** Permite conexiones `mode: mock` (desarrollo/demos). Por defecto solo fuera de producción. */

@@ -66,6 +66,7 @@ export class IngestPipeline {
   private readonly sessions = new Map<string, Session>();
   private readonly lastViewerSample = new Map<string, number>();
   private readonly agg = new Aggregator();
+  private readonly taps = new Set<(e: NormalizedEvent) => void>();
   private pending: NormalizedEvent[] = [];
   private timer?: ReturnType<typeof setInterval>;
   private flushing: Promise<void> = Promise.resolve();
@@ -95,9 +96,22 @@ export class IngestPipeline {
     return rows.length;
   }
 
+  /** Observador de todos los eventos (motor de alertas). Un fallo del observador nunca afecta al flujo. */
+  addTap(fn: (e: NormalizedEvent) => void): () => void {
+    this.taps.add(fn);
+    return () => this.taps.delete(fn);
+  }
+
   handleEvent(event: NormalizedEvent): void {
     try {
       this.track(event);
+      for (const tap of this.taps) {
+        try {
+          tap(event);
+        } catch (err) {
+          this.o.logger.error({ err }, "observador de eventos falló");
+        }
+      }
       const ring = this.recentByTenant.get(event.tenantId) ?? [];
       ring.push(event);
       if (ring.length > this.o.recentSize) ring.shift();

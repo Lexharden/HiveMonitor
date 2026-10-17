@@ -1,6 +1,7 @@
 import type { Permission } from "@hivemonitor/core";
 import type { Database } from "@hivemonitor/db";
 import type { EventBus } from "@hivemonitor/core";
+import type { AlertEngine } from "./alerts/engine.ts";
 import type { Auth } from "./auth.ts";
 import type { Config } from "./config.ts";
 import type { Encryptor } from "./crypto.ts";
@@ -20,6 +21,7 @@ export interface AppDeps {
   auth: Auth;
   bus: EventBus;
   ingest: Ingest;
+  alerts: AlertEngine;
   /** null si no hay credenciales de aplicación de Twitch. */
   twitch: TwitchService | null;
   encryptor: Encryptor;

@@ -55,3 +55,66 @@ export function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0f1115" : "#f4f4f2");
 }
+
+// --- Notificaciones --------------------------------------------------------------
+export type NotifyState = "granted" | "denied" | "default" | "unsupported";
+
+/** Estado del permiso de notificaciones: sistema (Tauri) o navegador (Notification API / PWA). */
+export async function notifyState(): Promise<NotifyState> {
+  try {
+    if (isTauri()) {
+      const { isPermissionGranted } = await import("@tauri-apps/plugin-notification");
+      return (await isPermissionGranted()) ? "granted" : "default";
+    }
+    if (typeof Notification === "undefined") return "unsupported";
+    return Notification.permission;
+  } catch {
+    return "unsupported";
+  }
+}
+
+export async function requestNotify(): Promise<NotifyState> {
+  try {
+    if (isTauri()) {
+      const { requestPermission } = await import("@tauri-apps/plugin-notification");
+      return (await requestPermission()) === "granted" ? "granted" : "denied";
+    }
+    if (typeof Notification === "undefined") return "unsupported";
+    return await Notification.requestPermission();
+  } catch {
+    return "unsupported";
+  }
+}
+
+/** Notificación nativa si hay permiso; si no, no hace nada (el aviso en pantalla ya existe). */
+export async function notify(title: string, body: string): Promise<void> {
+  try {
+    if ((await notifyState()) !== "granted") return;
+    if (isTauri()) {
+      const { sendNotification } = await import("@tauri-apps/plugin-notification");
+      sendNotification({ title, body });
+    } else new Notification(title, { body, icon: "/icons/icon-256.png" });
+  } catch {
+    /* sin soporte */
+  }
+}
+
+// --- Inicio automático (solo escritorio) ---------------------------------------------
+export async function autostartSupported(): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    await import("@tauri-apps/plugin-autostart");
+    return !/android|iphone|ipad/i.test(navigator.userAgent);
+  } catch {
+    return false;
+  }
+}
+export async function autostartEnabled(): Promise<boolean> {
+  const { isEnabled } = await import("@tauri-apps/plugin-autostart");
+  return isEnabled();
+}
+export async function setAutostart(on: boolean): Promise<void> {
+  const m = await import("@tauri-apps/plugin-autostart");
+  if (on) await m.enable();
+  else await m.disable();
+}

@@ -13,7 +13,7 @@ const HEARTBEAT_MS = 15_000;
 
 /** Un mensaje del bus es visible si el usuario tiene el permiso del tipo de evento. */
 export function canSee(perms: ReadonlySet<Permission>, m: BusMessage): boolean {
-  if (m.kind === "status") return perms.has("stream.view");
+  if (m.kind === "status" || m.kind === "alert" || m.kind === "heartbeat") return perms.has("stream.view");
   return perms.has(EVENT_PERMISSION[m.event.type]);
 }
 
@@ -64,7 +64,11 @@ export function realtimeRoutes(deps: AppDeps) {
           .writeSSE(
             m.kind === "event"
               ? { id: m.event.id, event: "event", data: JSON.stringify(m.event) }
-              : { event: "status", data: JSON.stringify({ platform: m.platform, channelId: m.channelId, ...m.change }) },
+              : m.kind === "alert"
+                ? { id: m.alert.id, event: "alert", data: JSON.stringify(m.alert) }
+                : m.kind === "heartbeat"
+                  ? { event: "heartbeat", data: JSON.stringify(m.heartbeat) }
+                  : { event: "status", data: JSON.stringify({ platform: m.platform, channelId: m.channelId, ...m.change }) },
           )
           .catch(() => {});
       });

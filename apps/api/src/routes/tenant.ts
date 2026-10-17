@@ -4,7 +4,10 @@ import { schema, withTenant } from "@hivemonitor/db";
 import type { AppDeps, AppEnv } from "../context.ts";
 import { connectionRoutes } from "./connections.ts";
 import { realtimeRoutes } from "./realtime.ts";
+import { alertRoutes } from "./alerts.ts";
 import { analyticsRoutes } from "./analytics.ts";
+import { heartbeatTenantRoutes } from "./heartbeat.ts";
+import { memberRoutes } from "./members.ts";
 import { twitchTenantRoutes } from "./twitch.ts";
 import { requireTenant } from "../middleware.ts";
 
@@ -15,6 +18,9 @@ export function tenantRoutes(deps: AppDeps) {
   r.route("/", realtimeRoutes(deps));
   r.route("/", twitchTenantRoutes(deps));
   r.route("/", analyticsRoutes(deps));
+  r.route("/", alertRoutes(deps));
+  r.route("/", memberRoutes(deps));
+  r.route("/", heartbeatTenantRoutes(deps));
 
   r.get("/audit", requireTenant(deps, "members.manage"), async (c) => {
     const { tenantId } = c.get("tenant");

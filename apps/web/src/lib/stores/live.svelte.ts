@@ -1,4 +1,4 @@
-import type { Client, ConnectionStatus, LiveChannel, NormalizedEvent, Platform, RuntimeConnection, StreamMessage } from "@hivemonitor/client";
+import type { AlertPayload, Client, ConnectionStatus, HeartbeatSource, LiveChannel, NormalizedEvent, Platform, RuntimeConnection, StreamMessage } from "@hivemonitor/client";
 
 export interface ViewerPoint {
   t: number;
@@ -19,6 +19,10 @@ class LiveState {
   events = $state<NormalizedEvent[]>([]);
   chat = $state<NormalizedEvent[]>([]);
   history = $state<Record<string, ViewerPoint[]>>({});
+  /** Alertas recientes (avisos en pantalla). */
+  toasts = $state<AlertPayload[]>([]);
+  /** Último latido por fuente (apps del ecosistema, OBS…). */
+  heartbeats = $state<Record<string, HeartbeatSource>>({});
   /** Reloj para duraciones; se actualiza cada segundo. */
   now = $state(Date.now());
 
@@ -27,11 +31,22 @@ class LiveState {
   private client?: Client;
   private orgId?: string;
   private listeners = new Set<(e: NormalizedEvent) => void>();
+  private alertListeners = new Set<(a: AlertPayload) => void>();
 
   /** Suscripción a eventos nuevos (p. ej. notificaciones nativas). Devuelve la baja. */
   onEvent(fn: (e: NormalizedEvent) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Suscripción a alertas nuevas (notificaciones nativas). Devuelve la baja. */
+  onAlert(fn: (a: AlertPayload) => void): () => void {
+    this.alertListeners.add(fn);
+    return () => this.alertListeners.delete(fn);
+  }
+
+  dismissToast(id: string) {
+    this.toasts = this.toasts.filter((t) => t.id !== id);
   }
 
   start(client: Client, orgId: string) {
@@ -42,6 +57,14 @@ class LiveState {
     this.reset();
     this.clock = setInterval(() => (this.now = Date.now()), 1000);
     this.stream = client.tenant(orgId).stream((m) => this.handle(m));
+    void client
+      .tenant(orgId)
+      .heartbeat.sources()
+      .then((r) => {
+        if (this.orgId !== orgId) return;
+        for (const s of r.sources) this.heartbeats[s.source] = s;
+      })
+      .catch(() => {});
   }
 
   stop() {
@@ -59,6 +82,8 @@ class LiveState {
     this.events = [];
     this.chat = [];
     this.history = {};
+    this.toasts = [];
+    this.heartbeats = {};
     this.link = "connecting";
   }
 
@@ -66,6 +91,20 @@ class LiveState {
     switch (m.type) {
       case "state":
         this.link = m.state;
+        break;
+      case "alert": {
+        if (m.data.channels.includes("panel")) this.toasts = [m.data, ...this.toasts].slice(0, 5);
+        for (const fn of this.alertListeners) {
+          try {
+            fn(m.data);
+          } catch {
+            /* un oyente roto no afecta al resto */
+          }
+        }
+        break;
+      }
+      case "heartbeat":
+        this.heartbeats[m.data.source] = { source: m.data.source, at: m.data.at, metrics: m.data.metrics };
         break;
       case "snapshot": {
         this.connections = m.data.connections;

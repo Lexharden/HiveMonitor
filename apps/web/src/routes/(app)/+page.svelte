@@ -28,6 +28,11 @@
     return Object.entries(byCur);
   });
 
+  const STALE_S = 120;
+  const sources = $derived(Object.values(live.heartbeats).sort((a, b) => a.source.localeCompare(b.source)));
+  const ageS = (iso: string) => Math.max(0, Math.round((live.now - new Date(iso).getTime()) / 1000));
+  const shown = (m: Record<string, unknown>) => Object.entries(m).slice(0, 6);
+
   const platforms = $derived([...new Set(live.connections.map((c) => c.platform))] as Platform[]);
   const retryIn = (iso?: string) => (iso ? Math.max(0, Math.round((new Date(iso).getTime() - live.now) / 1000)) : null);
 </script>
@@ -63,6 +68,26 @@
       </div>
     {/each}
   </section>
+
+  {#if sources.length}
+    <section class="mb-6" aria-label={t("hb.sources")}>
+      <h2 class="mb-2 text-sm font-medium text-fg-2">{t("hb.sources")}</h2>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {#each sources as s (s.source)}
+          {@const age = ageS(s.at)}
+          <div class="card p-4">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">{s.source}</span>
+              {#if age > STALE_S}<span class="text-xs font-medium text-bad">✕ {t("hb.noSignal")}</span>{:else}<span class="text-xs font-medium text-good">● {t("hb.ago", { s: age })}</span>{/if}
+            </div>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+              {#each shown(s.metrics) as [k, v] (k)}<dt class="truncate text-fg-3">{k}</dt><dd class="truncate text-right tabular-nums">{String(v)}</dd>{/each}
+            </dl>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
 
   <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
     <StatCard label={t("dash.viewers")} value={fmtNumber(totalViewers)} hint="{t('dash.peak')}: {fmtNumber(peak)}" />

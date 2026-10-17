@@ -3,8 +3,9 @@
   import { page } from "$app/state";
   import type { Permission } from "@hivemonitor/client";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import Toasts from "#lib/components/Toasts.svelte";
   import { t, type MessageKey } from "#lib/i18n.ts";
-  import { kv } from "#lib/platform.ts";
+  import { kv, notify } from "#lib/platform.ts";
   import { app } from "#lib/stores/app.svelte.ts";
   import { live } from "#lib/stores/live.svelte.ts";
   import { onDestroy } from "svelte";
@@ -24,6 +25,10 @@
     { href: "/events", label: "nav.events", icon: "events", need: "events.view" },
     { href: "/history", label: "nav.history", icon: "history", need: "analytics.view" },
     { href: "/integrations", label: "nav.integrations", icon: "plug", need: "integrations.manage" },
+    { href: "/alerts", label: "nav.alerts", icon: "bell", need: "alerts.manage" },
+    { href: "/members", label: "nav.members", icon: "members", need: "members.manage" },
+    { href: "/admin", label: "nav.admin", icon: "shield", superadmin: true },
+    { href: "/settings", label: "nav.settings", icon: "settings" },
   ];
   const items = $derived(NAV.filter((i) => (!i.need || app.can(i.need)) && (!i.superadmin || app.isSuperadmin)));
 
@@ -48,10 +53,14 @@
   });
   onDestroy(() => live.stop());
 
+  // Notificación del sistema (Tauri o navegador) para las alertas configuradas con ese canal
+  $effect(() => live.onAlert((a) => a.channels.includes("native") && void notify(a.ruleName, a.message)));
+
   const isActive = (href: string) => (href === "/" ? page.url.pathname === "/" : page.url.pathname.startsWith(href));
 </script>
 
 {#if app.me && app.org}
+  <Toasts />
   <div class="flex min-h-screen flex-col md:flex-row">
     <!-- Barra lateral (tablet/laptop) -->
     <aside class="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">

@@ -16,6 +16,10 @@
   let demo = $state(false);
   let error = $state("");
   let busy = $state(false);
+  type Token = { id: string; label: string; lastUsedAt: string | null; createdAt: string };
+  let tokens = $state<Token[]>([]);
+  let tokenLabel = $state("");
+  let newToken = $state("");
   let notice = $state<{ ok: boolean; text: string } | null>(null);
 
   // Retorno del flujo OAuth de Twitch (?twitch=ok | error&reason=...)
@@ -30,8 +34,23 @@
 
   async function load() {
     if (!api) return;
-    conns = (await api.connections()).connections;
+    const [c, tk] = await Promise.all([api.connections(), api.heartbeat.tokens()]);
+    conns = c.connections;
+    tokens = tk.tokens;
     loaded = true;
+  }
+
+  async function createToken(e: SubmitEvent) {
+    e.preventDefault();
+    if (!api) return;
+    error = "";
+    try {
+      newToken = (await api.heartbeat.createToken(tokenLabel.trim())).token;
+      tokenLabel = "";
+      await load();
+    } catch {
+      error = t("common.error");
+    }
   }
   $effect(() => {
     void app.org?.id;
@@ -153,4 +172,31 @@
       {t("int.demo")}
     </label>
   </form>
+
+  <section class="card mt-6 p-4">
+    <h2 class="font-medium">{t("hb.title")}</h2>
+    <p class="mt-1 text-sm text-fg-3">{t("hb.hint")}</p>
+    {#if newToken}
+      <div class="mt-3 rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm" role="status">
+        <p class="mb-1 text-warn">{t("hb.once")}</p>
+        <code class="block break-all rounded bg-surface-2 p-2 text-xs">{newToken}</code>
+        <button class="btn mt-2" onclick={() => (navigator.clipboard.writeText(newToken), (newToken = ""))}>{t("members.copyLink")}</button>
+      </div>
+    {/if}
+    <div class="mt-3 divide-y divide-border">
+      {#each tokens as tk (tk.id)}
+        <div class="flex items-center gap-3 py-2 text-sm">
+          <span class="flex-1 font-medium">{tk.label}</span>
+          <span class="text-xs text-fg-3">{t("hb.lastUsed")}: {tk.lastUsedAt ? new Date(tk.lastUsedAt).toLocaleString("es") : t("hb.never")}</span>
+          <button class="btn" onclick={() => act(() => api!.heartbeat.revokeToken(tk.id))}>{t("hb.revoke")}</button>
+        </div>
+      {:else}
+        <p class="py-2 text-sm text-fg-3">{t("hb.noTokens")}</p>
+      {/each}
+    </div>
+    <form class="mt-3 flex gap-2" onsubmit={createToken}>
+      <input class="input" required maxlength="60" placeholder={t("hb.label")} bind:value={tokenLabel} />
+      <button class="btn btn-primary shrink-0" disabled={!tokenLabel}>{t("hb.create")}</button>
+    </form>
+  </section>
 {/if}
