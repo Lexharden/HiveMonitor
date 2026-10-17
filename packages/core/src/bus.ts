@@ -19,11 +19,21 @@ export interface HeartbeatPayload {
   metrics: Record<string, unknown>;
 }
 
+export interface MarkerPayload {
+  id: string;
+  at: string;
+  kind: "manual" | "raid" | "donation" | "viewers_spike";
+  label: string;
+  platform?: string | null;
+  channelId?: string | null;
+}
+
 export type BusMessage =
   | { kind: "event"; tenantId: string; event: NormalizedEvent }
   | { kind: "status"; tenantId: string; platform: string; channelId: string; change: StatusChange }
   | { kind: "alert"; tenantId: string; alert: AlertPayload }
-  | { kind: "heartbeat"; tenantId: string; heartbeat: HeartbeatPayload };
+  | { kind: "heartbeat"; tenantId: string; heartbeat: HeartbeatPayload }
+  | { kind: "marker"; tenantId: string; marker: MarkerPayload };
 
 export type Unsubscribe = () => void;
 

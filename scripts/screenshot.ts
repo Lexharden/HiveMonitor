@@ -111,6 +111,24 @@ await goto("/events", 3000);
 await shot("04-events");
 await goto("/integrations", 2000);
 await shot("05-integrations");
+// Cockpit: meta + un momento marcado, y tres tamaños (monitor, tablet horizontal y tablet vertical)
+await evalJs(
+  `fetch('/api/t/${org}/goal',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({title:'Nuevo micrófono',targetUsd:50})}).then(r=>r.status)`,
+);
+await evalJs(
+  `fetch('/api/t/${org}/markers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({label:'Jugada épica'})}).then(r=>r.status)`,
+);
+await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await goto("/cockpit", 9000);
+await shot("12-cockpit-monitor");
+await send("Emulation.setDeviceMetricsOverride", { width: 1180, height: 820, deviceScaleFactor: 1, mobile: false });
+await goto("/cockpit", 4000);
+await shot("13-cockpit-tablet-horizontal");
+await send("Emulation.setDeviceMetricsOverride", { width: 820, height: 1180, deviceScaleFactor: 1, mobile: true });
+await goto("/cockpit", 4000);
+await shot("14-cockpit-tablet-vertical");
+await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+
 await goto("/alerts", 2500);
 await shot("08-alerts");
 await goto("/members", 2500);

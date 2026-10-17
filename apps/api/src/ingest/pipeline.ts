@@ -1,6 +1,6 @@
 import { schema, withTenant, type Database } from "@hivemonitor/db";
 import { isNull, sql } from "drizzle-orm";
-import { Aggregator, toDays, type HourDelta } from "./aggregator.ts";
+import { Aggregator, donationUsdMinor, toDays, type HourDelta } from "./aggregator.ts";
 import type { EventBus, NormalizedEvent, Platform } from "@hivemonitor/core";
 import type { Logger } from "../logger.ts";
 
@@ -12,6 +12,24 @@ export interface SessionCounters {
   subscriptions: number;
   /** Donaciones acumuladas por moneda (unidad menor). */
   donations: Record<string, number>;
+  /** Equivalente en USD (céntimos) de todas las donaciones de la sesión: lo usa la meta del cockpit. */
+  donationsUsdMinor: number;
+}
+
+/** Donador de la sesión en curso (para el «top donador» en vivo). */
+interface DonorAcc {
+  id: string;
+  name: string;
+  usdMinor: number;
+  /** Cantidad total en unidad menor, por moneda (para ordenar cuando no hay estimación en USD). */
+  byCurrency: Record<string, number>;
+}
+
+export interface TopDonor {
+  id: string;
+  name: string;
+  usdMinor: number;
+  byCurrency: Record<string, number>;
 }
 
 interface Session {
@@ -25,6 +43,7 @@ interface Session {
   viewers: number;
   peak: number;
   counters: SessionCounters;
+  donors: Map<string, DonorAcc>;
   lastEventAt: number;
   dirty: boolean;
 }
@@ -37,6 +56,8 @@ export interface LiveChannelState {
   viewers: number;
   peakViewers: number;
   counters: SessionCounters;
+  /** Los 5 mayores donadores de la sesión. */
+  topDonors: TopDonor[];
 }
 
 export interface PipelineOptions {
@@ -168,7 +189,8 @@ export class IngestPipeline {
         startedAt: e.occurredAt,
         viewers: 0,
         peak: 0,
-        counters: { messages: 0, likes: 0, shares: 0, followers: 0, subscriptions: 0, donations: {} },
+        counters: { messages: 0, likes: 0, shares: 0, followers: 0, subscriptions: 0, donations: {}, donationsUsdMinor: 0 },
+        donors: new Map(),
         lastEventAt: Date.now(),
         dirty: true,
       };
@@ -201,6 +223,14 @@ export class IngestPipeline {
         break;
       case "donation":
         s.counters.donations[e.payload.currency] = (s.counters.donations[e.payload.currency] ?? 0) + e.payload.amountMinor;
+        s.counters.donationsUsdMinor += donationUsdMinor(e.payload);
+        if (e.actor && s.donors.size < 5000) {
+          const d = s.donors.get(e.actor.id) ?? { id: e.actor.id, name: e.actor.name, usdMinor: 0, byCurrency: {} };
+          d.name = e.actor.name;
+          d.usdMinor += donationUsdMinor(e.payload);
+          d.byCurrency[e.payload.currency] = (d.byCurrency[e.payload.currency] ?? 0) + e.payload.amountMinor;
+          s.donors.set(d.id, d);
+        }
         break;
     }
   }
@@ -233,6 +263,7 @@ export class IngestPipeline {
         viewers: s.viewers,
         peakViewers: s.peak,
         counters: s.counters,
+        topDonors: topDonors(s.donors),
       });
     }
     return out;
@@ -400,4 +431,14 @@ function isDataError(err: unknown): boolean {
     if (typeof e.code === "string" && /^(22|23)/.test(e.code)) return true;
   }
   return false;
+}
+
+const totalAmount = (d: DonorAcc) => Object.values(d.byCurrency).reduce((n, v) => n + v, 0);
+
+/** Top 5 por equivalente en USD; sin estimación, por cantidad total. */
+function topDonors(donors: Map<string, DonorAcc>, n = 5): TopDonor[] {
+  return [...donors.values()]
+    .sort((a, b) => b.usdMinor - a.usdMinor || totalAmount(b) - totalAmount(a))
+    .slice(0, n)
+    .map(({ id, name, usdMinor, byCurrency }) => ({ id, name, usdMinor, byCurrency }));
 }

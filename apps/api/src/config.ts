@@ -52,6 +52,8 @@ const envSchema = z.object({
   /** Servidor SMTP para invitaciones por correo, p. ej. smtps://usuario:clave@smtp.ejemplo.com. Opcional. */
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  /** Donación (USD) a partir de la cual se marca el momento en el historial. */
+  MARKER_BIG_DONATION_USD: z.coerce.number().min(0).default(10),
   EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).default(60),
   METRICS_TOKEN: z.string().min(16).optional(),
   /** Permite conexiones `mode: mock` (desarrollo/demos). Por defecto solo fuera de producción. */
