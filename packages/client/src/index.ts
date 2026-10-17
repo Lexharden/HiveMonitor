@@ -1,6 +1,14 @@
-import type { AlertPayload, ConnectionStatus, HeartbeatPayload, NormalizedEvent, Permission, Platform } from "@hivemonitor/core";
+import type {
+  AlertPayload,
+  ConnectionStatus,
+  HeartbeatPayload,
+  MarkerPayload,
+  NormalizedEvent,
+  Permission,
+  Platform,
+} from "@hivemonitor/core";
 
-export type { AlertPayload, HeartbeatPayload, NormalizedEvent, Permission, Platform, ConnectionStatus };
+export type { AlertPayload, HeartbeatPayload, MarkerPayload, NormalizedEvent, Permission, Platform, ConnectionStatus };
 
 // --- Tipos de la API ---------------------------------------------------------
 export interface Me {
@@ -34,6 +42,20 @@ export interface SessionCounters {
   followers: number;
   subscriptions: number;
   donations: Record<string, number>;
+  /** Equivalente en USD (céntimos) de las donaciones de la sesión. */
+  donationsUsdMinor?: number;
+}
+
+export interface TopDonor {
+  id: string;
+  name: string;
+  usdMinor: number;
+  byCurrency: Record<string, number>;
+}
+
+export interface Goal {
+  title: string;
+  targetUsd: number;
 }
 export interface LiveChannel {
   platform: Platform;
@@ -43,6 +65,7 @@ export interface LiveChannel {
   viewers: number;
   peakViewers: number;
   counters: SessionCounters;
+  topDonors?: TopDonor[];
 }
 export interface RuntimeConnection {
   id: string;
@@ -67,6 +90,7 @@ export type StreamMessage =
   | { type: "status"; data: { platform: Platform; channelId: string; status: ConnectionStatus; at: string; detail?: string } }
   | { type: "alert"; data: AlertPayload }
   | { type: "heartbeat"; data: HeartbeatPayload }
+  | { type: "marker"; data: MarkerPayload }
   | { type: "state"; state: "connecting" | "open" | "closed" };
 
 export interface Totals {
@@ -110,6 +134,7 @@ export interface SessionDetail {
   timeline: { t: number; v: number }[];
   eventsByType: Record<string, number>;
   topDonors: { id: string; name: string; currency: string; amountMinor: number; count: number }[];
+  markers?: { id: string; at: string; kind: MarkerPayload["kind"]; label: string }[];
 }
 export interface Donor {
   id: string;
@@ -186,6 +211,13 @@ export interface SystemInfo {
   subscribers: number | null;
   errors: { at: string; level: string; msg: string; detail?: string }[];
   connectionList: { id: string; tenantId: string; platform: Platform; status: ConnectionStatus; detail?: string; attempts: number }[];
+}
+
+export interface PublicMeta {
+  signupMode: "open" | "invite" | "closed";
+  firstRun: boolean;
+  emailEnabled: boolean;
+  socialProviders: ("twitch" | "google")[];
 }
 
 export class ApiError extends Error {
@@ -268,6 +300,10 @@ export function createClient(opts: ClientOptions = {}) {
         const r = await post<{ url?: string }>("/api/auth/sign-in/social", { provider, callbackURL, disableRedirect: true });
         return r.url ?? null;
       },
+      requestPasswordReset: (email: string, redirectTo: string) => post<unknown>("/api/auth/request-password-reset", { email, redirectTo }),
+      resetPassword: (token: string, newPassword: string) => post<unknown>("/api/auth/reset-password", { token, newPassword }),
+      resendVerification: (email: string, callbackURL: string) =>
+        post<unknown>("/api/auth/send-verification-email", { email, callbackURL }),
       async signOut() {
         try {
           await post("/api/auth/sign-out");
@@ -277,6 +313,7 @@ export function createClient(opts: ClientOptions = {}) {
       },
     },
     me: () => json<Me>("/api/me"),
+    publicMeta: () => json<PublicMeta>("/api/meta/public"),
     roles: () => json<{ permissions: Permission[]; roles: { key: string; label: string; permissions: Permission[] }[] }>("/api/meta/roles"),
 
     // --- Organizaciones ---
@@ -340,6 +377,16 @@ export function createClient(opts: ClientOptions = {}) {
           createToken: (label: string) => post<{ id: string; token: string }>(t(orgId, "/heartbeat/tokens"), { label }),
           revokeToken: (id: string) => json(t(orgId, `/heartbeat/tokens/${id}`), { method: "DELETE" }),
         },
+        markers: {
+          list: (hours = 12) => json<{ markers: MarkerPayload[] }>(t(orgId, `/markers?hours=${hours}`)),
+          create: (label?: string) => post<{ marker: MarkerPayload }>(t(orgId, "/markers"), { label }),
+          remove: (id: string) => json(t(orgId, `/markers/${id}`), { method: "DELETE" }),
+        },
+        goal: {
+          get: () => json<{ goal: Goal | null }>(t(orgId, "/goal")),
+          set: (goal: Goal | null) =>
+            json<{ goal: Goal | null }>(t(orgId, "/goal"), { method: "PUT", body: JSON.stringify(goal ?? { goal: null }) }),
+        },
         live: () => json<{ channels: LiveChannel[]; connections: RuntimeConnection[]; serverTime: string }>(t(orgId, "/live")),
         audit: (limit = 50) => json<{ entries: AuditEntry[] }>(t(orgId, `/audit?limit=${limit}`)),
         stream: (onMessage: (m: StreamMessage) => void) => openStream(orgId, onMessage),
@@ -392,6 +439,7 @@ export function createClient(opts: ClientOptions = {}) {
             else if (m.event === "event") onMessage({ type: "event", data: reviveEvent(m.data) });
             else if (m.event === "status") onMessage({ type: "status", data: m.data as never });
             else if (m.event === "alert") onMessage({ type: "alert", data: m.data as AlertPayload });
+            else if (m.event === "marker") onMessage({ type: "marker", data: m.data as MarkerPayload });
             else if (m.event === "heartbeat") onMessage({ type: "heartbeat", data: m.data as HeartbeatPayload });
           }
         } catch (err) {

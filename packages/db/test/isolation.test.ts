@@ -108,6 +108,29 @@ describe("aislamiento entre tenants (RLS)", () => {
   });
 });
 
+describe("tablas del cockpit (RLS)", () => {
+  test("marcadores y preferencias son por tenant", async () => {
+    await withTenant(app.db, A, async (tx) => {
+      await tx.insert(schema.streamMarker).values({ id: "m_a", tenantId: A, kind: "manual", label: "a" });
+      await tx.insert(schema.tenantPref).values({ tenantId: A, key: "donation_goal", value: { title: "A", targetUsd: 10 } });
+    });
+    await withTenant(app.db, B, async (tx) => {
+      await tx.insert(schema.streamMarker).values({ id: "m_b", tenantId: B, kind: "raid", label: "b" });
+    });
+    expect((await withTenant(app.db, A, (tx) => tx.select().from(schema.streamMarker))).map((r) => r.id)).toEqual(["m_a"]);
+    expect((await withTenant(app.db, B, (tx) => tx.select().from(schema.streamMarker))).map((r) => r.id)).toEqual(["m_b"]);
+    expect(await withTenant(app.db, B, (tx) => tx.select().from(schema.tenantPref))).toHaveLength(0);
+    expect(await app.db.select().from(schema.streamMarker)).toHaveLength(0); // sin contexto de tenant: nada
+    await fails(withTenant(app.db, A, (tx) => tx.insert(schema.streamMarker).values({ id: "x", tenantId: B, kind: "manual", label: "x" })));
+  });
+
+  test("el tipo de marcador está restringido", async () => {
+    await fails(
+      withTenant(app.db, A, (tx) => tx.insert(schema.streamMarker).values({ id: "bad", tenantId: A, kind: "inventado", label: "x" })),
+    );
+  });
+});
+
 describe("particiones de eventos", () => {
   test("ensure/drop de particiones", async () => {
     const sql = postgres(pg.adminUrl, { max: 1 });

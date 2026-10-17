@@ -21,6 +21,7 @@
   }
   const NAV: NavItem[] = [
     { href: "/", label: "nav.dashboard", icon: "live", need: "stream.view" },
+    { href: "/cockpit", label: "nav.cockpit", icon: "cockpit", need: "stream.view" },
     { href: "/chat", label: "nav.chat", icon: "chat", need: "chat.view" },
     { href: "/events", label: "nav.events", icon: "events", need: "events.view" },
     { href: "/history", label: "nav.history", icon: "history", need: "analytics.view" },
@@ -54,7 +55,7 @@
   onDestroy(() => live.stop());
 
   // Notificación del sistema (Tauri o navegador) para las alertas configuradas con ese canal
-  $effect(() => live.onAlert((a) => a.channels.includes("native") && void notify(a.ruleName, a.message)));
+  $effect(() => live.onAlert((a) => a.channels.includes("native") && !live.muted && void notify(a.ruleName, a.message)));
 
   const isActive = (href: string) => (href === "/" ? page.url.pathname === "/" : page.url.pathname.startsWith(href));
 </script>

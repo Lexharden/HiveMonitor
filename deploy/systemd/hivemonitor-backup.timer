@@ -1,0 +1,11 @@
+[Unit]
+Description=HiveMonitor - copia de seguridad diaria
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Si el servidor estaba apagado a esa hora, la copia se hace al arrancar
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

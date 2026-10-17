@@ -14,6 +14,11 @@
     moon: "M20 14A8 8 0 0110 4a8 8 0 1010 10z",
     out: "M9 4H5v16h4m4-4l4-4-4-4m4 4H9",
     plus: "M12 5v14M5 12h14",
+    flag: "M5 21V4m0 0h11l-2 4 2 4H5",
+    bellOff: "M6 17V11a6 6 0 013-5.2M18 11v6l2 2H8M10 21h4M3 3l18 18",
+    full: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+    sun2: "M12 3v2m0 14v2M3 12h2m14 0h2M12 8a4 4 0 100 8 4 4 0 000-8z",
+    cockpit: "M3 12a9 9 0 0118 0M12 12l4-4M5 18h14",
     trash: "M5 7h14M10 7V4h4v3m-6 0l1 13h6l1-13",
   } as const;
   export type IconName = keyof typeof paths;

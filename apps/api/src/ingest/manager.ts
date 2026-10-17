@@ -8,6 +8,7 @@ import type { Config } from "../config.ts";
 import type { Encryptor } from "../crypto.ts";
 import type { Logger } from "../logger.ts";
 import type { EventBus } from "@hivemonitor/core";
+import { MarkerDetector } from "./markers.ts";
 import { IngestPipeline } from "./pipeline.ts";
 import { Supervisor, type ConnectionSpec } from "./supervisor.ts";
 
@@ -27,6 +28,7 @@ export interface IngestDeps {
 export interface Ingest {
   pipeline: IngestPipeline;
   supervisor: Supervisor;
+  markers: MarkerDetector;
   allowMock: boolean;
   specFromRow(row: ConnectionRow): ConnectionSpec;
   startConnection(row: ConnectionRow): Promise<boolean>;
@@ -50,6 +52,8 @@ export function createIngest(deps: IngestDeps): Ingest {
   const { config, logger, adminDb, appDb, encryptor } = deps;
   const allowMock = config.ALLOW_MOCK_ADAPTERS ?? config.NODE_ENV !== "production";
   const pipeline = new IngestPipeline({ appDb, bus: deps.bus, logger });
+  const markers = new MarkerDetector({ appDb, bus: deps.bus, logger, bigDonationUsd: config.MARKER_BIG_DONATION_USD });
+  pipeline.addTap(markers.tap);
 
   const real: Partial<Record<Platform, AdapterFactory>> = {
     youtube: youtubeAdapterFactory,
@@ -119,6 +123,7 @@ export function createIngest(deps: IngestDeps): Ingest {
 
   return {
     pipeline,
+    markers,
     supervisor,
     allowMock,
     specFromRow,

@@ -15,6 +15,7 @@ Uso: hivemonitor [comando]
   healthcheck                    Comprueba /readyz en el puerto local (código de salida 0/1; para HEALTHCHECK)
   migrate                        Aplica las migraciones pendientes y sale (usa DATABASE_URL)
   make-superadmin <correo>       Marca a un usuario existente como superadmin (--revoke para quitarlo)
+  reset-password <correo>        Genera una contraseña nueva para un usuario (recuperación sin correo) y cierra sus sesiones
   version                        Muestra la versión
 
 La configuración es por variables de entorno (ver .env.example).`;
@@ -68,6 +69,39 @@ async function superadminCmd(): Promise<number> {
   }
 }
 
+async function resetPasswordCmd(): Promise<number> {
+  const email = args.find((a) => !a.startsWith("--"));
+  if (!email) {
+    console.error("Uso: hivemonitor reset-password <correo>");
+    return 1;
+  }
+  const [{ loadConfig }, { createDb }, { createAuth }, { createLogger }, { resetUserPassword }] = await Promise.all([
+    import("./config.ts"),
+    import("@hivemonitor/db"),
+    import("./auth.ts"),
+    import("./logger.ts"),
+    import("./cli-commands.ts"),
+  ]);
+  const config = loadConfig();
+  const db = createDb(config.DATABASE_URL, { max: 1 });
+  try {
+    const auth = createAuth({ config, adminDb: db.db, logger: createLogger({ ...config, LOG_LEVEL: "silent" }), mailer: null });
+    const password = await resetUserPassword(auth, db.db, email);
+    if (!password) {
+      console.error(`No existe un usuario con contraseña para ${email} (¿solo usa login social?).`);
+      return 1;
+    }
+    console.log(`Contraseña nueva para ${email}:
+
+  ${password}
+
+Se cerraron sus sesiones. Cámbiala después de entrar.`);
+    return 0;
+  } finally {
+    await db.close();
+  }
+}
+
 switch (cmd) {
   case "serve":
     await import("./server.ts");
@@ -80,6 +114,9 @@ switch (cmd) {
     break;
   case "make-superadmin":
     process.exit(await superadminCmd());
+    break;
+  case "reset-password":
+    process.exit(await resetPasswordCmd());
     break;
   case "version":
   case "--version":

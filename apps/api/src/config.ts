@@ -25,6 +25,12 @@ const envSchema = z.object({
   DATABASE_APP_PASSWORD: z.string().min(8).optional(),
   AUTO_MIGRATE: bool.default(true),
 
+  /**
+   * Quién puede crear cuenta: `open` (cualquiera), `invite` (solo con invitación a ese correo; por defecto) o `closed`.
+   * El primer usuario de una instalación nueva siempre puede registrarse.
+   */
+  SIGNUP_MODE: z.enum(["open", "invite", "closed"]).default("invite"),
+
   /** URL pública del servidor (p. ej. https://hivemonitor.yafel.dev). */
   BASE_URL: z.string().url().default("http://localhost:3000"),
   BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET debe tener al menos 32 caracteres"),
@@ -46,6 +52,8 @@ const envSchema = z.object({
   /** Servidor SMTP para invitaciones por correo, p. ej. smtps://usuario:clave@smtp.ejemplo.com. Opcional. */
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  /** Donación (USD) a partir de la cual se marca el momento en el historial. */
+  MARKER_BIG_DONATION_USD: z.coerce.number().min(0).default(10),
   EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).default(60),
   METRICS_TOKEN: z.string().min(16).optional(),
   /** Permite conexiones `mode: mock` (desarrollo/demos). Por defecto solo fuera de producción. */

@@ -5,7 +5,9 @@ import { organization } from "better-auth/plugins/organization";
 import { schema, type Database } from "@hivemonitor/db";
 import { ac, orgRoles } from "./access.ts";
 import { auditAdmin } from "./audit.ts";
-import { createMailer } from "./mailer.ts";
+import { APIError } from "better-auth/api";
+import { createMailer, type Mailer } from "./mailer.ts";
+import { checkSignup } from "./signup.ts";
 import { isProd, type Config } from "./config.ts";
 import { actorStore } from "./audit.ts";
 import type { Logger } from "./logger.ts";
@@ -17,10 +19,12 @@ export interface AuthDeps {
   logger: Logger;
   /** Notificación de invitaciones (correo/enlace). Por defecto solo se registra. */
   onInvitation?: (data: { email: string; role: string; organizationName: string; link: string }) => Promise<void>;
+  /** Sustituye al mailer SMTP (pruebas). `null` fuerza «sin correo». */
+  mailer?: Mailer | null;
 }
 
-export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) {
-  const mail = createMailer(config, logger);
+export function createAuth({ config, adminDb, logger, onInvitation, mailer }: AuthDeps) {
+  const mail = mailer !== undefined ? mailer : createMailer(config, logger);
   const actorId = () => actorStore.getStore()?.userId ?? null;
   const log = (e: Parameters<typeof auditAdmin>[1]) =>
     auditAdmin(adminDb, e).catch((err) => logger.error({ err }, "no se pudo registrar la auditoría"));
@@ -49,7 +53,40 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
         invitation: schema.invitation,
       },
     }),
-    emailAndPassword: { enabled: true, minPasswordLength: 10, maxPasswordLength: 128 },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 10,
+      maxPasswordLength: 128,
+      // Sin SMTP no se puede verificar: exigirlo dejaría a todos fuera
+      requireEmailVerification: Boolean(mail),
+      resetPasswordTokenExpiresIn: 60 * 60,
+      sendResetPassword: mail
+        ? async ({ user, url }) => {
+            await mail.resetPassword(user.email, user.name, url);
+          }
+        : undefined,
+    },
+    emailVerification: mail
+      ? {
+          sendOnSignUp: true,
+          sendOnSignIn: true,
+          autoSignInAfterVerification: true,
+          sendVerificationEmail: async ({ user, url }) => {
+            await mail.verifyEmail(user.email, user.name, url);
+          },
+        }
+      : undefined,
+    databaseHooks: {
+      user: {
+        create: {
+          // Política de registro (SIGNUP_MODE): cubre correo y contraseña y también el login social
+          before: async (user) => {
+            const r = await checkSignup(adminDb, config.SIGNUP_MODE, user.email);
+            if (!r.ok) throw new APIError("FORBIDDEN", { message: r.reason, code: "SIGNUP_DISABLED" });
+          },
+        },
+      },
+    },
     socialProviders: social,
     user: {
       additionalFields: {
@@ -71,6 +108,9 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
       customRules: {
         "/sign-in/email": { window: 60, max: 5 },
         "/sign-up/email": { window: 3600, max: 10 },
+        "/request-password-reset": { window: 3600, max: 5 },
+        "/send-verification-email": { window: 3600, max: 6 },
+        "/reset-password": { window: 3600, max: 10 },
       },
     },
     advanced: {
@@ -158,7 +198,9 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
           const payload = { email: data.email, role: data.role, organizationName: data.organization.name, link };
           await onInvitation?.(payload);
           // El correo es opcional y no debe hacer fallar la invitación (el enlace también se muestra en el panel)
-          await mail?.(payload).catch((err) => logger.warn({ err: (err as Error).message }, "no se pudo enviar el correo de invitación"));
+          await mail
+            ?.invitation(payload)
+            .catch((err) => logger.warn({ err: (err as Error).message }, "no se pudo enviar el correo de invitación"));
         },
       }),
     ],

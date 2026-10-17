@@ -6,6 +6,7 @@ import { connectionRoutes } from "./connections.ts";
 import { realtimeRoutes } from "./realtime.ts";
 import { alertRoutes } from "./alerts.ts";
 import { analyticsRoutes } from "./analytics.ts";
+import { cockpitRoutes } from "./cockpit.ts";
 import { heartbeatTenantRoutes } from "./heartbeat.ts";
 import { memberRoutes } from "./members.ts";
 import { twitchTenantRoutes } from "./twitch.ts";
@@ -20,6 +21,7 @@ export function tenantRoutes(deps: AppDeps) {
   r.route("/", analyticsRoutes(deps));
   r.route("/", alertRoutes(deps));
   r.route("/", memberRoutes(deps));
+  r.route("/", cockpitRoutes(deps));
   r.route("/", heartbeatTenantRoutes(deps));
 
   r.get("/audit", requireTenant(deps, "members.manage"), async (c) => {

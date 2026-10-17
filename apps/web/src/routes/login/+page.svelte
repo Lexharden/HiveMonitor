@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
   import { ApiError } from "@hivemonitor/client";
   import AuthCard from "#lib/components/AuthCard.svelte";
   import { t } from "#lib/i18n.ts";
@@ -13,6 +14,11 @@
   let error = $state("");
   let busy = $state(false);
 
+  // Política de registro y correo (en Tauri se carga al comprobar la URL del servidor)
+  onMount(() => {
+    if (!app.native || app.serverUrl) void app.loadPublicMeta();
+  });
+
   $effect(() => {
     if (app.me) void goto("/", { replaceState: true });
   });
@@ -20,6 +26,7 @@
   async function testServer() {
     serverState = "testing";
     serverState = (await app.testServer(server)) ? "ok" : "fail";
+    if (serverState === "ok") void app.loadPublicMeta(server);
   }
 
   async function submit(e: SubmitEvent) {
@@ -36,7 +43,13 @@
       }
       await app.login(email, password);
     } catch (err) {
-      error = err instanceof ApiError && err.status === 429 ? t("common.error") : t("auth.invalid");
+      const code = err instanceof ApiError ? (err.body as { code?: string } | null)?.code : undefined;
+      error =
+        code === "EMAIL_NOT_VERIFIED"
+          ? t("auth.notVerified")
+          : err instanceof ApiError && err.status === 429
+            ? t("common.error")
+            : t("auth.invalid");
     } finally {
       busy = false;
     }
@@ -87,6 +100,7 @@
     <div>
       <label class="mb-1 block text-sm font-medium" for="password">{t("auth.password")}</label>
       <input id="password" class="input" type="password" autocomplete="current-password" required bind:value={password} />
+      <p class="mt-1 text-right text-xs"><a class="text-accent hover:underline" href="/forgot-password">{t("auth.forgot")}</a></p>
     </div>
     {#if error}<p class="text-sm text-bad" role="alert">{error}</p>{/if}
     <button class="btn btn-primary w-full" disabled={busy}>{t("auth.login")}</button>
@@ -102,7 +116,11 @@
     </div>
   {/if}
 
-  <p class="mt-5 text-center text-sm text-fg-3">
-    {t("auth.noAccount")} <a class="text-accent hover:underline" href="/register">{t("auth.register")}</a>
-  </p>
+  {#if !app.meta || app.meta.signupMode !== "closed" || app.meta.firstRun}
+    <p class="mt-5 text-center text-sm text-fg-3">
+      {t("auth.noAccount")} <a class="text-accent hover:underline" href="/register">{t("auth.register")}</a>
+    </p>
+    {#if app.meta?.firstRun}<p class="mt-2 text-center text-xs text-fg-3">{t("auth.firstRun")}</p>
+    {:else if app.meta?.signupMode === "invite"}<p class="mt-2 text-center text-xs text-fg-3">{t("auth.signupInvite")}</p>{/if}
+  {/if}
 </AuthCard>

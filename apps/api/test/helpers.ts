@@ -9,6 +9,7 @@ import type { AppDeps } from "../src/context.ts";
 import { createIngest } from "../src/ingest/manager.ts";
 import { createTwitchService } from "../src/twitch/service.ts";
 import { AlertEngine } from "../src/alerts/engine.ts";
+import type { Mailer } from "../src/mailer.ts";
 import { createEncryptorFromEnv } from "../src/crypto.ts";
 import { createLogger } from "../src/logger.ts";
 
@@ -32,6 +33,7 @@ export async function createTestEnv(
   extra: Record<string, string> = {},
   twitchFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
   alertsFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+  authOpts: { mailer?: Mailer | null } = {},
 ): Promise<TestEnv> {
   const pg = await startTestPostgres();
   const config = loadConfig({
@@ -43,6 +45,7 @@ export async function createTestEnv(
     ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
     CORS_ORIGINS: "http://tauri.localhost",
     RATE_LIMIT_PER_MINUTE: "10000",
+    SIGNUP_MODE: "open",
     ...extra,
   });
   const logger = createLogger(config);
@@ -53,6 +56,7 @@ export async function createTestEnv(
     config,
     adminDb: admin.db,
     logger,
+    mailer: authOpts.mailer ?? null,
     onInvitation: async (i) => void invitations.push({ email: i.email, role: i.role, link: i.link }),
   });
   const bus = new InProcessBus();
@@ -81,6 +85,7 @@ export async function createTestEnv(
     alerts,
     twitch,
     encryptor,
+    emailEnabled: Boolean(authOpts.mailer),
   };
   const http = createApp(deps);
 

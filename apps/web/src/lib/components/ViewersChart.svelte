@@ -11,6 +11,7 @@
     axisFormat = (tm: number) => fmtTime(tm).slice(0, 5),
     tipFormat = fmtTime,
     title = t("dash.viewersOverTime"),
+    height = 260,
   }: {
     history: Record<string, ViewerPoint[]>;
     now: number;
@@ -19,12 +20,13 @@
     axisFormat?: (t: number) => string;
     tipFormat?: (t: number) => string;
     title?: string;
+    height?: number;
   } = $props();
 
   const ORDER: Platform[] = ["tiktok", "twitch", "youtube"];
   const COLOR: Record<Platform, string> = { tiktok: "var(--series-1)", twitch: "var(--series-2)", youtube: "var(--series-3)" };
 
-  const H = 260;
+  const H = $derived(height);
   const M = { top: 12, right: 76, bottom: 26, left: 44 };
 
   let width = $state(640);
@@ -45,7 +47,7 @@
   const yTicks = $derived([0, 1, 2, 3, 4].map((i) => (yMax / 4) * i));
 
   const innerW = $derived(Math.max(10, width - M.left - M.right));
-  const innerH = H - M.top - M.bottom;
+  const innerH = $derived(H - M.top - M.bottom);
   const x = (t: number) => M.left + ((t - t0) / rangeMs) * innerW;
   const y = (v: number) => M.top + innerH - (v / yMax) * innerH;
 

@@ -25,6 +25,8 @@ export interface AppDeps {
   /** null si no hay credenciales de aplicación de Twitch. */
   twitch: TwitchService | null;
   encryptor: Encryptor;
+  /** Hay envío de correo (SMTP): verificación de correo, recuperación de contraseña e invitaciones por email. */
+  emailEnabled: boolean;
   /** Hook opcional para servir el frontend embebido. */
   staticHandler?: (req: Request) => Promise<Response | null>;
 }

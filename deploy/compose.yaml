@@ -6,7 +6,8 @@ name: hivemonitor
 
 services:
   db:
-    image: docker.io/library/postgres:16-alpine
+    # POSTGRES_IMAGE (mismo valor para db y backup: pg_dump debe ser de la misma versión mayor que el servidor)
+    image: ${POSTGRES_IMAGE:-docker.io/library/postgres:16-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-hive}
@@ -45,6 +46,33 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     stop_grace_period: 20s
+
+  # Copias de seguridad automáticas (opcional):  docker compose … --profile backup up -d
+  backup:
+    profiles: [backup]
+    image: ${POSTGRES_IMAGE:-docker.io/library/postgres:16-alpine}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/backup-loop.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-hive}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+      PGDATABASE: ${POSTGRES_DB:-hivemonitor}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_FAIL_WEBHOOK: ${BACKUP_FAIL_WEBHOOK:-}
+    volumes:
+      - ./backup/backup-loop.sh:/backup-loop.sh:ro
+      - ${BACKUP_DIR:-../backups}:/backups
+    networks: [internal]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE] # escribir en la carpeta de copias aunque no sea de root
+    security_opt: ["no-new-privileges:true"]
 
 networks:
   internal: {}
