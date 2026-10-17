@@ -1,5 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
-import { createTikTokAdapterFactory, mockAdapterFactory, youtubeAdapterFactory } from "@hivemonitor/adapters";
+import { createBridgeClientFactory, createTikTokAdapterFactory, mockAdapterFactory, youtubeAdapterFactory } from "@hivemonitor/adapters";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { AdapterFactory, Platform } from "@hivemonitor/core";
 import { schema, withTenant, type Database } from "@hivemonitor/db";
 import type { Config } from "../config.ts";
@@ -36,6 +38,14 @@ export interface Ingest {
   close(): Promise<void>;
 }
 
+/** Ejecutable del puente: la ruta configurada, o el que está junto al binario de HiveMonitor, o el del PATH. */
+export function resolveBridgePath(configured?: string): string {
+  if (configured) return configured;
+  const exe = process.platform === "win32" ? "tiktok-bridge.exe" : "tiktok-bridge";
+  const sibling = join(dirname(process.execPath), exe);
+  return existsSync(sibling) ? sibling : exe;
+}
+
 export function createIngest(deps: IngestDeps): Ingest {
   const { config, logger, adminDb, appDb, encryptor } = deps;
   const allowMock = config.ALLOW_MOCK_ADAPTERS ?? config.NODE_ENV !== "production";
@@ -43,7 +53,14 @@ export function createIngest(deps: IngestDeps): Ingest {
 
   const real: Partial<Record<Platform, AdapterFactory>> = {
     youtube: youtubeAdapterFactory,
-    tiktok: createTikTokAdapterFactory({ signApiKey: config.TIKTOK_SIGN_API_KEY, usdCentsPerCoin: config.TIKTOK_USD_CENTS_PER_COIN }),
+    tiktok: createTikTokAdapterFactory({
+      signApiKey: config.TIKTOK_SIGN_API_KEY,
+      usdCentsPerCoin: config.TIKTOK_USD_CENTS_PER_COIN,
+      clientFactory:
+        config.TIKTOK_PROVIDER === "bridge"
+          ? createBridgeClientFactory({ bridgePath: resolveBridgePath(config.TIKTOK_BRIDGE_PATH), proxy: config.TIKTOK_PROXY })
+          : undefined,
+    }),
     ...deps.factories,
   };
 
