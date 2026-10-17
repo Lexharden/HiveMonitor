@@ -1,10 +1,19 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
+  "description": "Permisos mínimos de la ventana principal",
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+    },
+    "store:allow-load",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-delete",
+    "store:allow-save",
+    "notification:default"
   ]
 }

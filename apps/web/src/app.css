@@ -1,1 +1,94 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens de tema. Oscuro por defecto (la clase .dark va en <html>). */
+:root {
+  color-scheme: light;
+  --bg: #f4f4f2;
+  --surface: #fcfcfb;
+  --surface-2: #efefec;
+  --border: #dcdbd6;
+  --fg: #0b0b0b;
+  --fg-2: #52514e;
+  --fg-3: #6f6e69;
+  --accent: #2a78d6;
+  --accent-fg: #ffffff;
+  --good: #1a7f4b;
+  --warn: #9a6700;
+  --bad: #c43434;
+
+  /* Categóricos (paleta de referencia validada), asignados por entidad: plataforma */
+  --series-1: #2a78d6; /* tiktok  */
+  --series-2: #eb6834; /* twitch  */
+  --series-3: #1baf7a; /* youtube */
+  --grid: #e4e3de;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --bg: #0f1115;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --border: #33322f;
+  --fg: #f0efec;
+  --fg-2: #c3c2b7;
+  --fg-3: #9b9a92;
+  --accent: #3987e5;
+  --accent-fg: #0b0b0b;
+  --good: #4cc38a;
+  --warn: #e0a93a;
+  --bad: #f07272;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #2b2a28;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-s1: var(--series-1);
+  --color-s2: var(--series-2);
+  --color-s3: var(--series-3);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respeta las zonas seguras en móviles/tablets (PWA instalada, Android) */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm font-medium text-fg transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-primary {
+  @apply border-transparent bg-accent text-accent-fg;
+}
+.btn-danger {
+  @apply border-transparent bg-bad text-white;
+}
+.input {
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-3 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent;
+}
+.card {
+  @apply rounded-xl border border-border bg-surface;
+}

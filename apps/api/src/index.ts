@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { createDb, migrate } from "@hivemonitor/db";
 import { websocket } from "hono/bun";
 import { sql } from "drizzle-orm";
@@ -6,6 +7,8 @@ import { createAuth } from "./auth.ts";
 import { InProcessBus } from "./bus/in-process.ts";
 import { createIngest } from "./ingest/manager.ts";
 import { IngestPipeline } from "./ingest/pipeline.ts";
+import { buildCsp } from "./middleware.ts";
+import { createStaticHandler, dirSource } from "./static.ts";
 import { loadConfig } from "./config.ts";
 import { createEncryptorFromEnv } from "./crypto.ts";
 import { createLogger } from "./logger.ts";
@@ -32,6 +35,8 @@ const bus = new InProcessBus((err) => logger.error({ err }, "handler del bus fal
 const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
 const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor });
 const auth = createAuth({ config, adminDb: admin.db, logger });
+const webDist = process.env.WEB_DIST ?? fileURLToPath(new URL("../../web/build", import.meta.url));
+const staticHandler = createStaticHandler(dirSource(webDist), (hashes) => buildCsp({ config }, hashes));
 const deps = {
   config,
   logger,
@@ -42,6 +47,7 @@ const deps = {
   bus,
   ingest,
   encryptor,
+  staticHandler,
 };
 
 const orphans = await IngestPipeline.closeOrphans(admin.db);

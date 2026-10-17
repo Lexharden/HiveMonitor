@@ -21,6 +21,11 @@ export default defineConfig({
     strictPort: true,
     host: host || "127.0.0.1",
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
+    // En desarrollo la API corre en otro puerto: se sirve bajo el mismo origen (cookies sin CORS)
+    proxy: {
+      "/api": { target: process.env.API_URL ?? "http://127.0.0.1:3000", ws: true, changeOrigin: false },
+      "/healthz": process.env.API_URL ?? "http://127.0.0.1:3000",
+    },
     watch: { ignored: ["**/apps/desktop/**"] },
   },
 });

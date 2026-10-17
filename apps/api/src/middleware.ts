@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { secureHeaders } from "hono/secure-headers";
 import { getConnInfo } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 import { resolvePermissions, type Permission } from "@hivemonitor/core";
@@ -34,25 +33,40 @@ export function requestContext(deps: AppDeps): MiddlewareHandler<AppEnv> {
   };
 }
 
+/** Política CSP de la app. `scriptHashes`: hashes de los scripts en línea del index.html. */
+export function buildCsp(deps: Pick<AppDeps, "config">, scriptHashes: string[] = []): string {
+  const d = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", ...scriptHashes],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "https:"],
+    "connect-src": ["'self'", ...deps.config.CORS_ORIGINS],
+    "frame-ancestors": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "object-src": ["'none'"],
+    "worker-src": ["'self'"],
+    "manifest-src": ["'self'"],
+  };
+  return Object.entries(d)
+    .map(([k, v]) => `${k} ${v.join(" ")}`)
+    .join("; ");
+}
+
+/** Cabeceras de seguridad. No pisa una CSP ya fijada por el handler (la del SPA lleva hashes). */
 export function securityHeaders(deps: AppDeps): MiddlewareHandler {
-  const connect = ["'self'", ...deps.config.CORS_ORIGINS];
-  return secureHeaders({
-    contentSecurityPolicy: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: connect,
-      frameAncestors: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      objectSrc: ["'none'"],
-    },
-    strictTransportSecurity:
-      isProd(deps.config) || deps.config.BASE_URL.startsWith("https://") ? "max-age=63072000; includeSubDomains" : false,
-    xFrameOptions: "DENY",
-    referrerPolicy: "strict-origin-when-cross-origin",
-  });
+  const csp = buildCsp(deps);
+  const hsts = isProd(deps.config) || deps.config.BASE_URL.startsWith("https://");
+  return async (c, next) => {
+    await next();
+    const h = c.res.headers;
+    if (!h.has("content-security-policy")) h.set("content-security-policy", csp);
+    h.set("x-content-type-options", "nosniff");
+    h.set("x-frame-options", "DENY");
+    h.set("referrer-policy", "strict-origin-when-cross-origin");
+    h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+    if (hsts) h.set("strict-transport-security", "max-age=63072000; includeSubDomains");
+  };
 }
 
 export function corsMiddleware(deps: AppDeps): MiddlewareHandler {
