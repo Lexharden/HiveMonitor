@@ -1,0 +1,16 @@
+# Copia de seguridad de HiveMonitor (la lanza hivemonitor-backup.timer).
+# Instalación: ver docs/backups.md
+[Unit]
+Description=HiveMonitor - copia de seguridad de PostgreSQL
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Ajusta la ruta del repositorio y el usuario. Modos: HM_RUNTIME=native | docker | podman
+WorkingDirectory=/opt/hivemonitor-src
+EnvironmentFile=/etc/hivemonitor/backup.env
+ExecStart=/opt/hivemonitor-src/scripts/backup.sh
+Nice=10
+IOSchedulingClass=idle
+# La copia contiene datos de usuarios: nadie más que el propietario
+UMask=0077
