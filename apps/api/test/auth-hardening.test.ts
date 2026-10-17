@@ -20,7 +20,9 @@ async function env(extra: Record<string, string> = {}, mails?: RawMail[]) {
 const signUp = (e: TestEnv, email: string) =>
   e.call(null, "POST", "/api/auth/sign-up/email", { email, name: email.split("@")[0], password: PASSWORD });
 const signIn = (e: TestEnv, email: string, password = PASSWORD) => e.call(null, "POST", "/api/auth/sign-in/email", { email, password });
-const tokenFrom = (mail: RawMail) => new URL(mail.text.match(/https?:\/\/\S+/)![0]).searchParams.get("token") ?? new URL(mail.text.match(/https?:\/\/\S+/)![0]).pathname.split("/").pop()!;
+const tokenFrom = (mail: RawMail) =>
+  new URL(mail.text.match(/https?:\/\/\S+/)![0]).searchParams.get("token") ??
+  new URL(mail.text.match(/https?:\/\/\S+/)![0]).pathname.split("/").pop()!;
 
 describe("SIGNUP_MODE", () => {
   test("closed: el primer usuario puede registrarse (arranque) y los demás no", async () => {
@@ -36,11 +38,17 @@ describe("SIGNUP_MODE", () => {
     const e = await env({ SIGNUP_MODE: "invite" });
     const ownerRes = await signUp(e, "owner@x.dev");
     const owner = ownerRes.headers.get("set-auth-token")!;
-    const org = ((await (await e.call(owner, "POST", "/api/auth/organization/create", { name: "Org", slug: "org" })).json()) as { id: string }).id;
+    const org = (
+      (await (await e.call(owner, "POST", "/api/auth/organization/create", { name: "Org", slug: "org" })).json()) as { id: string }
+    ).id;
 
     expect((await signUp(e, "intruso@x.dev")).status).toBe(403);
 
-    const inv = await e.call(owner, "POST", "/api/auth/organization/invite-member", { email: "Amigo@X.dev", role: "analyst", organizationId: org });
+    const inv = await e.call(owner, "POST", "/api/auth/organization/invite-member", {
+      email: "Amigo@X.dev",
+      role: "analyst",
+      organizationId: org,
+    });
     const invId = ((await inv.json()) as { id: string }).id;
     expect((await signUp(e, "amigo@x.dev")).status).toBe(200);
     expect((await signUp(e, "intruso@x.dev")).status).toBe(403); // la invitación es solo para su correo
@@ -52,7 +60,10 @@ describe("SIGNUP_MODE", () => {
     expect((await signUp(e, "cancelado@x.dev")).status).toBe(403);
 
     await e.call(owner, "POST", "/api/auth/organization/invite-member", { email: "tarde@x.dev", role: "analyst", organizationId: org });
-    await e.admin.db.update(schema.invitation).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.invitation.email, "tarde@x.dev"));
+    await e.admin.db
+      .update(schema.invitation)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.invitation.email, "tarde@x.dev"));
     expect((await signUp(e, "tarde@x.dev")).status).toBe(403);
     void invId;
   }, 120_000);
@@ -98,13 +109,19 @@ describe("verificación de correo y recuperación de contraseña", () => {
     const oldToken = first.headers.get("set-auth-token")!;
     mails.length = 0;
 
-    const req = await e.call(null, "POST", "/api/auth/request-password-reset", { email: "olvido@x.dev", redirectTo: `${BASE_URL}/reset-password` });
+    const req = await e.call(null, "POST", "/api/auth/request-password-reset", {
+      email: "olvido@x.dev",
+      redirectTo: `${BASE_URL}/reset-password`,
+    });
     expect(req.status).toBe(200);
     expect(mails).toHaveLength(1);
     expect(mails[0]!.subject).toContain("Restablece");
 
     // un correo inexistente responde igual (no revela qué cuentas existen) y no envía nada
-    const ghost = await e.call(null, "POST", "/api/auth/request-password-reset", { email: "fantasma@x.dev", redirectTo: `${BASE_URL}/reset-password` });
+    const ghost = await e.call(null, "POST", "/api/auth/request-password-reset", {
+      email: "fantasma@x.dev",
+      redirectTo: `${BASE_URL}/reset-password`,
+    });
     expect(ghost.status).toBe(200);
     expect(mails).toHaveLength(1);
 
@@ -115,7 +132,9 @@ describe("verificación de correo y recuperación de contraseña", () => {
     expect((await signIn(e, "olvido@x.dev")).status).toBe(401); // la clave vieja ya no vale
     expect((await signIn(e, "olvido@x.dev", "otra-clave-larga-1")).status).toBe(200);
     // el token es de un solo uso
-    expect((await e.call(null, "POST", "/api/auth/reset-password", { token, newPassword: "y-otra-mas-larga-2" })).status).toBeGreaterThanOrEqual(400);
+    expect(
+      (await e.call(null, "POST", "/api/auth/reset-password", { token, newPassword: "y-otra-mas-larga-2" })).status,
+    ).toBeGreaterThanOrEqual(400);
     void oldToken;
   }, 120_000);
 

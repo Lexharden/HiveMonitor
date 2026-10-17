@@ -277,7 +277,8 @@ export function createClient(opts: ClientOptions = {}) {
       },
       requestPasswordReset: (email: string, redirectTo: string) => post<unknown>("/api/auth/request-password-reset", { email, redirectTo }),
       resetPassword: (token: string, newPassword: string) => post<unknown>("/api/auth/reset-password", { token, newPassword }),
-      resendVerification: (email: string, callbackURL: string) => post<unknown>("/api/auth/send-verification-email", { email, callbackURL }),
+      resendVerification: (email: string, callbackURL: string) =>
+        post<unknown>("/api/auth/send-verification-email", { email, callbackURL }),
       async signOut() {
         try {
           await post("/api/auth/sign-out");

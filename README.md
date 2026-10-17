@@ -57,6 +57,7 @@ Un mismo artefacto, tres formas. Toda la configuración es por variables de ento
 | Docker Compose                      | [docs/deploy-docker.md](docs/deploy-docker.md) |
 | Podman rootless (compose o Quadlet) | [docs/deploy-podman.md](docs/deploy-podman.md) |
 | Detrás de Nginx Proxy Manager       | [docs/reverse-proxy.md](docs/reverse-proxy.md) |
+| Copias de seguridad y restauración  | [docs/backups.md](docs/backups.md)             |
 | Cliente de escritorio y Android     | [docs/desktop.md](docs/desktop.md)             |
 
 ## Documentación

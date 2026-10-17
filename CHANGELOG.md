@@ -9,6 +9,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - `SIGNUP_MODE` (`open|invite|closed`, por defecto `invite`): control de quién puede crear cuenta; el primer usuario siempre puede.
 - Verificación de correo y recuperación de contraseña por SMTP (pantallas `/forgot-password` y `/reset-password`).
 - `hivemonitor reset-password <correo>` para recuperar acceso sin SMTP.
+- Copias de seguridad automáticas: servicio `backup` de compose (perfil opcional), timer de systemd, verificación de cada volcado, aviso por Discord
+  si falla, gancho para subirla fuera del servidor y `scripts/verify-backup.sh` (restauración real en una base temporal). Guía en `docs/backups.md`.
 
 ## [0.2.1] - 2026-10-17
 
