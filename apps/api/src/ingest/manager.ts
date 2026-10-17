@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { mockAdapterFactory, youtubeAdapterFactory } from "@hivemonitor/adapters";
+import { createTikTokAdapterFactory, mockAdapterFactory, youtubeAdapterFactory } from "@hivemonitor/adapters";
 import type { AdapterFactory, Platform } from "@hivemonitor/core";
 import { schema, withTenant, type Database } from "@hivemonitor/db";
 import type { Config } from "../config.ts";
@@ -41,7 +41,11 @@ export function createIngest(deps: IngestDeps): Ingest {
   const allowMock = config.ALLOW_MOCK_ADAPTERS ?? config.NODE_ENV !== "production";
   const pipeline = new IngestPipeline({ appDb, bus: deps.bus, logger });
 
-  const real: Partial<Record<Platform, AdapterFactory>> = { youtube: youtubeAdapterFactory, ...deps.factories };
+  const real: Partial<Record<Platform, AdapterFactory>> = {
+    youtube: youtubeAdapterFactory,
+    tiktok: createTikTokAdapterFactory({ signApiKey: config.TIKTOK_SIGN_API_KEY, usdCentsPerCoin: config.TIKTOK_USD_CENTS_PER_COIN }),
+    ...deps.factories,
+  };
 
   const supervisor = new Supervisor({
     logger,

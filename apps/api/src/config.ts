@@ -47,6 +47,10 @@ const envSchema = z.object({
   ALLOW_MOCK_ADAPTERS: bool.optional(),
   /** Conexiones simultáneas en fase de connect() para TikTok (servicio de firma externo). */
   TIKTOK_MAX_CONCURRENCY: z.coerce.number().int().min(1).default(2),
+  /** API key del servicio de firma de TikTok (Euler Stream). */
+  TIKTOK_SIGN_API_KEY: z.string().optional(),
+  /** Céntimos de USD estimados por moneda de TikTok (para el equivalente en las estadísticas). */
+  TIKTOK_USD_CENTS_PER_COIN: z.coerce.number().min(0).default(0.5),
   RECONNECT_BASE_MS: z.coerce.number().int().min(1).default(2000),
   RECONNECT_MAX_MS: z.coerce.number().int().min(1).default(300000),
   OFFLINE_RETRY_MS: z.coerce.number().int().min(1).default(60000),

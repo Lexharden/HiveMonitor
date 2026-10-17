@@ -184,7 +184,10 @@ class ManagedConnection {
     if (!this.desired) return;
     if (change.status === "offline") this.scheduleRetry("offline");
     else if (change.status === "error") this.scheduleRetry("error");
-    else if (change.status === "rate_limited") this.scheduleRetry("rate_limited", change.retryInMs);
+    else if (change.status === "rate_limited") {
+      this.sup.noteRateLimit(this.spec.platform, change.retryInMs ?? 60_000);
+      this.scheduleRetry("rate_limited", change.retryInMs);
+    }
   }
 
   private async attempt(): Promise<void> {
@@ -202,6 +205,12 @@ class ManagedConnection {
         release = await sem.acquire();
         this.queued = false;
         if (!this.desired || gen !== this.gen) return;
+        const wait = this.sup.cooldownLeft(this.spec.platform);
+        if (wait > 0) {
+          this.setStatus("rate_limited", "en espera por el límite global del servicio");
+          await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * 500)));
+          if (!this.desired || gen !== this.gen) return;
+        }
         this.setStatus("connecting");
       }
       const adapter = this.factory({ ...this.spec }, this.handlers(gen));
@@ -247,6 +256,8 @@ class ManagedConnection {
 export class Supervisor {
   private readonly conns = new Map<string, ManagedConnection>();
   private readonly sems = new Map<Platform, Semaphore>();
+  private readonly cooldownUntil = new Map<Platform, number>();
+  private rateLimitHits = 0;
   constructor(readonly o: SupervisorOptions) {
     for (const [p, n] of Object.entries(o.connectConcurrency ?? {})) {
       if (n && n > 0) this.sems.set(p as Platform, new Semaphore(n));
@@ -255,6 +266,19 @@ export class Supervisor {
 
   semaphore(p: Platform): Semaphore | undefined {
     return this.sems.get(p);
+  }
+
+  /**
+   * El límite del servicio de firma es global (por API key), no por tenant: ante un rate limit se pausan
+   * TODAS las conexiones nuevas de esa plataforma hasta que pase el tiempo indicado.
+   */
+  noteRateLimit(p: Platform, ms: number): void {
+    this.rateLimitHits++;
+    this.cooldownUntil.set(p, Math.max(this.cooldownUntil.get(p) ?? 0, Date.now() + ms));
+  }
+
+  cooldownLeft(p: Platform): number {
+    return Math.max(0, (this.cooldownUntil.get(p) ?? 0) - Date.now());
   }
 
   /** Inicia (o reinicia) la conexión. Devuelve false si no hay adaptador para ella. */
@@ -287,7 +311,9 @@ export class Supervisor {
   stats() {
     const byStatus: Record<string, number> = {};
     for (const c of this.conns.values()) byStatus[c.snapshot().status] = (byStatus[c.snapshot().status] ?? 0) + 1;
-    return { total: this.conns.size, byStatus, queued: [...this.sems.values()].reduce((n, s) => n + s.queued, 0) };
+    const cooldown: Record<string, number> = {};
+    for (const p of this.cooldownUntil.keys()) if (this.cooldownLeft(p) > 0) cooldown[p] = this.cooldownLeft(p);
+    return { total: this.conns.size, byStatus, queued: [...this.sems.values()].reduce((n, s) => n + s.queued, 0), rateLimitHits: this.rateLimitHits, cooldownMs: cooldown };
   }
 
   async moderate(id: string, tenantId: string, req: ModerationRequest): Promise<void> {

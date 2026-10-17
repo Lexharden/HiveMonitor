@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { extname, join, normalize, sep } from "node:path";
 
 export interface StaticAsset {
-  body: BodyInit;
+  body: ConstructorParameters<typeof Response>[0];
   type: string;
 }
 

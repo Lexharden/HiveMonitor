@@ -186,6 +186,31 @@ describe("supervisor", () => {
     await sup.shutdown();
   });
 
+  test("rate limit global: una conexión limitada pausa las nuevas de la misma plataforma", async () => {
+    const starts: Record<string, number> = {};
+    const { sup } = setup(
+      (s) => (ctx, h) => ({
+        platform: ctx.platform,
+        status: () => "live",
+        async connect() {
+          starts[s.id] = Date.now();
+          if (s.id === "limited") h.onStatus({ status: "rate_limited", at: new Date(), retryInMs: 200 });
+          else h.onStatus({ status: "live", at: new Date() });
+        },
+        async disconnect() {},
+      }),
+      { connectConcurrency: { tiktok: 1 } },
+    );
+    await sup.start(spec("limited", "t1"));
+    await until(() => sup.stats().rateLimitHits === 1);
+    const t0 = Date.now();
+    await sup.start(spec("other", "t2"));
+    await until(() => sup.get("other")?.status === "live");
+    expect(starts.other! - t0).toBeGreaterThanOrEqual(120);
+    expect(sup.stats().rateLimitHits).toBeGreaterThanOrEqual(1);
+    await sup.shutdown();
+  });
+
   test("concurrencia de connect() limitada por plataforma, con cola", async () => {
     let active = 0;
     let maxActive = 0;

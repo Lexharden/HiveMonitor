@@ -33,6 +33,18 @@ export function adminRoutes(deps: AppDeps) {
     return c.json({ tenants: rows });
   });
 
+  /** Salud del sistema: conexiones por estado, cola, rate limits y recursos del proceso. */
+  r.get("/system", (c) => {
+    const mem = process.memoryUsage();
+    return c.json({
+      uptimeSec: Math.round(process.uptime()),
+      memory: { rssMb: Math.round(mem.rss / 1048576), heapUsedMb: Math.round(mem.heapUsed / 1048576) },
+      connections: deps.ingest.supervisor.stats(),
+      subscribers: (deps.bus as { subscriberCount?: () => number }).subscriberCount?.() ?? null,
+      connectionList: deps.ingest.supervisor.list().map((x) => ({ id: x.id, tenantId: x.tenantId, platform: x.platform, status: x.status, detail: x.detail, attempts: x.attempts })),
+    });
+  });
+
   r.patch("/tenants/:id", async (c) => {
     const id = c.req.param("id");
     const body = patchSchema.safeParse(await c.req.json().catch(() => null));
