@@ -1,4 +1,12 @@
-import { createClient, type Client, type Me, type OrgMembership, type Permission, type TokenStore } from "@hivemonitor/client";
+import {
+  createClient,
+  type Client,
+  type Me,
+  type OrgMembership,
+  type Permission,
+  type PublicMeta,
+  type TokenStore,
+} from "@hivemonitor/client";
 import { applyTheme, isTauri, kv, type Theme } from "#lib/platform.ts";
 
 const KEYS = { server: "server_url", token: "auth_token", org: "active_org", theme: "theme" } as const;
@@ -10,6 +18,8 @@ class AppState {
   me = $state<Me | null>(null);
   activeOrgId = $state<string | null>(null);
   theme = $state<Theme>("dark");
+  /** Política de registro y correo del servidor (pantallas de acceso). */
+  meta = $state<PublicMeta | null>(null);
 
   readonly native = isTauri();
   private token: string | null = null;
@@ -59,6 +69,18 @@ class AppState {
       this.me = null;
     }
     return this.me;
+  }
+
+  /** Carga la política pública del servidor (en Tauri, de la URL indicada aunque aún no esté guardada). */
+  async loadPublicMeta(url?: string): Promise<PublicMeta | null> {
+    try {
+      const base = (url ?? (this.native ? this.serverUrl : "")).trim().replace(/\/+$/, "");
+      const res = await fetch(`${base}/api/meta/public`);
+      this.meta = res.ok ? ((await res.json()) as PublicMeta) : null;
+    } catch {
+      this.meta = null;
+    }
+    return this.meta;
   }
 
   async setServerUrl(url: string) {

@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Añadido
+
+- `SIGNUP_MODE` (`open|invite|closed`, por defecto `invite`): control de quién puede crear cuenta; el primer usuario siempre puede.
+- Verificación de correo y recuperación de contraseña por SMTP (pantallas `/forgot-password` y `/reset-password`).
+- `hivemonitor reset-password <correo>` para recuperar acceso sin SMTP.
+
 ## [0.2.1] - 2026-10-17
 
 ### Corregido

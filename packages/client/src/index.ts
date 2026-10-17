@@ -188,6 +188,13 @@ export interface SystemInfo {
   connectionList: { id: string; tenantId: string; platform: Platform; status: ConnectionStatus; detail?: string; attempts: number }[];
 }
 
+export interface PublicMeta {
+  signupMode: "open" | "invite" | "closed";
+  firstRun: boolean;
+  emailEnabled: boolean;
+  socialProviders: ("twitch" | "google")[];
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -268,6 +275,9 @@ export function createClient(opts: ClientOptions = {}) {
         const r = await post<{ url?: string }>("/api/auth/sign-in/social", { provider, callbackURL, disableRedirect: true });
         return r.url ?? null;
       },
+      requestPasswordReset: (email: string, redirectTo: string) => post<unknown>("/api/auth/request-password-reset", { email, redirectTo }),
+      resetPassword: (token: string, newPassword: string) => post<unknown>("/api/auth/reset-password", { token, newPassword }),
+      resendVerification: (email: string, callbackURL: string) => post<unknown>("/api/auth/send-verification-email", { email, callbackURL }),
       async signOut() {
         try {
           await post("/api/auth/sign-out");
@@ -277,6 +287,7 @@ export function createClient(opts: ClientOptions = {}) {
       },
     },
     me: () => json<Me>("/api/me"),
+    publicMeta: () => json<PublicMeta>("/api/meta/public"),
     roles: () => json<{ permissions: Permission[]; roles: { key: string; label: string; permissions: Permission[] }[] }>("/api/meta/roles"),
 
     // --- Organizaciones ---

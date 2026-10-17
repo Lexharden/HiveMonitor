@@ -46,7 +46,7 @@ export function memberRoutes(deps: AppDeps) {
         .filter((i) => i.expiresAt.getTime() > now)
         // Enlace para compartir a mano cuando no hay correo configurado
         .map((i) => ({ ...i, link: `${deps.config.BASE_URL}/accept-invitation/${i.id}` })),
-      emailEnabled: Boolean(deps.config.SMTP_URL),
+      emailEnabled: deps.emailEnabled,
     });
   });
 
