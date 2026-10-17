@@ -49,6 +49,12 @@ sudo nginx -t && sudo systemctl reload nginx
 En el `.env` de HiveMonitor: `BASE_URL=https://TU.DOMINIO` y `TRUSTED_PROXIES=127.0.0.1` (Nginx en el mismo host; con `HOST=127.0.0.1` solo el proxy llega a la app).
 Si emites el certificado antes de activar el bloque 443, comenta temporalmente ese `server` y usa solo el de puerto 80.
 
+### Variante sin TLS
+
+[`deploy/nginx/hivemonitor-nossl.conf`](../deploy/nginx/hivemonitor-nossl.conf) escucha solo en el puerto 80, sin certificados ni redirección.
+Úsala cuando el HTTPS lo termina otra capa (Cloudflare, balanceador, otro proxy) o en una red local de confianza. Si es la capa pública,
+cookies y tokens irían en claro: usa la versión con TLS. Mismos requisitos de `.env` (`TRUSTED_PROXIES` = IP de este Nginx).
+
 ## Webhook de Twitch (EventSub)
 
 Con `TWITCH_EVENTSUB_MODE=webhook`, Twitch llama a `https://<tu dominio>/webhooks/twitch/eventsub`. No restrinjas esa ruta por IP

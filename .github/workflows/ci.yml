@@ -58,6 +58,12 @@ jobs:
         working-directory: apps/desktop/src-tauri
       - run: cargo clippy --all-targets -- -D warnings
         working-directory: apps/desktop/src-tauri
+      - name: tiktok-bridge (fmt + clippy)
+        working-directory: apps/tiktok-bridge
+        run: |
+          sudo apt-get install -y pkg-config libssl-dev
+          cargo fmt --check
+          cargo clippy --all-targets --locked -- -D warnings
 
   binary:
     name: Binario del servidor
@@ -67,6 +73,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Dependencias del puente
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
+      # El puente de TikTok se compila para el SO del runner (linux-x64); los demás destinos usan solo el binario principal
       - run: bun scripts/build-binary.ts --targets=linux-x64,linux-arm64,windows-x64
       - uses: actions/upload-artifact@v4
         with:

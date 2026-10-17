@@ -21,7 +21,14 @@ sudo useradd --system --home /opt/hivemonitor --shell /usr/sbin/nologin hivemoni
 sudo install -D -m 0755 dist/hivemonitor-linux-x64 /opt/hivemonitor/hivemonitor
 ```
 
-El binario lleva el frontend y las migraciones: no necesita nada más en disco.
+El binario lleva el frontend y las migraciones. Para TikTok (gratis, sin API key) instala también el puente, **en la misma carpeta**:
+
+```bash
+# compilado con scripts/build-binary.ts (necesita Rust) o descargado de los artefactos de CI
+sudo install -m 0755 dist/tiktok-bridge /opt/hivemonitor/tiktok-bridge
+```
+
+HiveMonitor lo encuentra solo; si lo pones en otro sitio, `TIKTOK_BRIDGE_PATH`.
 
 ## 3. Configuración
 

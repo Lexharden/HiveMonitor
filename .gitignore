@@ -17,3 +17,4 @@ bun.lockb
 .dev-data/
 .shots/
 dist/
+apps/tiktok-bridge/target/

@@ -52,7 +52,16 @@ const envSchema = z.object({
   ALLOW_MOCK_ADAPTERS: bool.optional(),
   /** Conexiones simultáneas en fase de connect() para TikTok (servicio de firma externo). */
   TIKTOK_MAX_CONCURRENCY: z.coerce.number().int().min(1).default(2),
-  /** API key del servicio de firma de TikTok (Euler Stream). */
+  /**
+   * Cliente de TikTok: `bridge` (por defecto; Rust + piratetok-live-rs, gratis, sin API key) o `connector`
+   * (tiktok-live-connector; necesita el servicio de firma de Euler Stream).
+   */
+  TIKTOK_PROVIDER: z.enum(["bridge", "connector"]).default("bridge"),
+  /** Ruta del ejecutable tiktok-bridge. Por defecto, junto al ejecutable de HiveMonitor o en el PATH. */
+  TIKTOK_BRIDGE_PATH: z.string().optional(),
+  /** Proxy opcional para las conexiones del puente (http, https, socks5). */
+  TIKTOK_PROXY: z.string().optional(),
+  /** API key del servicio de firma (solo con TIKTOK_PROVIDER=connector). */
   TIKTOK_SIGN_API_KEY: z.string().optional(),
   /** Céntimos de USD estimados por moneda de TikTok (para el equivalente en las estadísticas). */
   TIKTOK_USD_CENTS_PER_COIN: z.coerce.number().min(0).default(0.5),

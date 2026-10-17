@@ -73,9 +73,33 @@ try {
     const exe = t.startsWith("windows") ? ".exe" : "";
     const out = join(outDir, `hivemonitor-${t}${exe}`);
     console.log(`\n→ compilando ${t}`);
-    run(["bun", "build", "--compile", "--minify", `--target=bun-${t}`, "--outfile", out, join(apiSrc, "index.ts")]);
+    // Sin minificar identificadores: los errores de las librerías se reconocen por nombre de clase
+    run([
+      "bun",
+      "build",
+      "--compile",
+      "--minify-whitespace",
+      "--minify-syntax",
+      `--target=bun-${t}`,
+      "--outfile",
+      out,
+      join(apiSrc, "index.ts"),
+    ]);
     console.log(`  ${out} (${(statSync(out).size / 1048576).toFixed(0)} MB)`);
   }
+  // Puente de TikTok (Rust): solo para el sistema donde se compila (la compilación cruzada requiere su propia toolchain)
+  if (!args.includes("--skip-bridge") && Bun.spawnSync(["cargo", "--version"]).exitCode === 0) {
+    const bridgeDir = join(root, "apps/tiktok-bridge");
+    console.log("\n→ compilando tiktok-bridge (cargo --release)");
+    run(["cargo", "build", "--release", "--locked"], bridgeDir);
+    const exe = process.platform === "win32" ? ".exe" : "";
+    const out = join(outDir, `tiktok-bridge${exe}`);
+    writeFileSync(out, readFileSync(join(bridgeDir, "target/release", `tiktok-bridge${exe}`)), { mode: 0o755 });
+    console.log(`  ${out} (${(statSync(out).size / 1048576).toFixed(1)} MB) — déjalo junto al binario de HiveMonitor`);
+  } else {
+    console.log("\n(sin cargo o --skip-bridge: no se compila tiktok-bridge; usa TIKTOK_PROVIDER=connector o compílalo aparte)");
+  }
+
   console.log(`\nincrustados: ${web.length} archivos web, ${migrations.length} migraciones · versión ${version()}`);
 } finally {
   writeFileSync(generated, original); // restaura el stub

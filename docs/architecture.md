@@ -19,6 +19,7 @@ Monolito modular preparado para separarse (bus, adaptadores y persistencia está
 | Bus | `packages/core/src/bus.ts`, `apps/api/src/bus` | interfaz; implementación in-process; sustituible por Redis Streams/NATS sin tocar productores ni consumidores |
 | Supervisor | `apps/api/src/ingest/supervisor.ts` | una conexión por (tenant, plataforma, canal); backoff exponencial con jitter; semáforo y cooldown global por plataforma |
 | Pipeline | `apps/api/src/ingest/pipeline.ts` | publica al bus, sesiones de directo, contadores, persistencia por lotes bajo RLS, agregados por hora/día |
+| TikTok | `apps/tiktok-bridge`, `packages/adapters/src/tiktok` | Rust (`piratetok-live-rs`, sin API key) como proceso por canal con JSON por líneas; `tiktok-live-connector` como respaldo |
 | Alertas | `apps/api/src/alerts` | 4 tipos, 3 canales, cooldowns |
 | Auth | `apps/api/src/auth.ts` | Better Auth: email/contraseña, OAuth Twitch/Google, organizaciones; cookies (web) y bearer (Tauri) |
 | Permisos | `packages/core/src/{permissions,roles}.ts` | roles = conjuntos de permisos; la UI decide por permiso, nunca por nombre de rol |
