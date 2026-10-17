@@ -172,6 +172,8 @@ export function createClient(opts: ClientOptions = {}) {
         connect: (id: string) => post(t(orgId, `/connections/${id}/connect`)),
         disconnect: (id: string) => post(t(orgId, `/connections/${id}/disconnect`)),
         deleteConnection: (id: string) => json(t(orgId, `/connections/${id}`), { method: "DELETE" }),
+        /** Inicia la autorización OAuth de Twitch; devuelve la URL a abrir. */
+        twitchAuthorize: (client: "web" | "native") => post<{ url: string }>(t(orgId, "/integrations/twitch/authorize"), { client }),
         live: () => json<{ channels: LiveChannel[]; connections: RuntimeConnection[]; serverTime: string }>(t(orgId, "/live")),
         audit: (limit = 50) => json<{ entries: { id: string; action: string; target: string | null; at: string; actorUserId: string | null; meta: unknown }[] }>(t(orgId, `/audit?limit=${limit}`)),
         stream: (onMessage: (m: StreamMessage) => void) => openStream(orgId, onMessage),

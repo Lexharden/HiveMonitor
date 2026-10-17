@@ -7,6 +7,7 @@ import { InProcessBus } from "../src/bus/in-process.ts";
 import { loadConfig } from "../src/config.ts";
 import type { AppDeps } from "../src/context.ts";
 import { createIngest } from "../src/ingest/manager.ts";
+import { createTwitchService } from "../src/twitch/service.ts";
 import { createEncryptorFromEnv } from "../src/crypto.ts";
 import { createLogger } from "../src/logger.ts";
 
@@ -26,7 +27,10 @@ export interface TestEnv {
   call(token: string | null, method: string, path: string, body?: unknown): Promise<Response>;
 }
 
-export async function createTestEnv(extra: Record<string, string> = {}): Promise<TestEnv> {
+export async function createTestEnv(
+  extra: Record<string, string> = {},
+  twitchFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): Promise<TestEnv> {
   const pg = await startTestPostgres();
   const config = loadConfig({
     NODE_ENV: "test",
@@ -51,7 +55,8 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
   });
   const bus = new InProcessBus();
   const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
-  const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor });
+  const twitch = createTwitchService({ config, logger, adminDb: admin.db, encryptor, fetch: twitchFetch });
+  const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor, factories: twitch ? { twitch: twitch.factory } : undefined });
   const deps: AppDeps = {
     config,
     logger,
@@ -61,6 +66,7 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
     auth,
     bus,
     ingest,
+    twitch,
     encryptor,
   };
   const http = createApp(deps);
@@ -94,6 +100,7 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
       return token;
     },
     async stop() {
+      deps.twitch?.stop();
       await deps.ingest.close();
       await deps.bus.close();
       await app.close();

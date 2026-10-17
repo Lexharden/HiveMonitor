@@ -182,7 +182,10 @@ class ManagedConnection {
     }
     this.setStatus(change.status, change.detail);
     if (!this.desired) return;
-    if (change.status === "offline") this.scheduleRetry("offline");
+    if (change.status === "offline") {
+      if (change.passive) this.sup.o.pipeline.closeSession(this.spec.tenantId, this.spec.platform, this.spec.channelId);
+      else this.scheduleRetry("offline");
+    }
     else if (change.status === "error") this.scheduleRetry("error");
     else if (change.status === "rate_limited") {
       this.sup.noteRateLimit(this.spec.platform, change.retryInMs ?? 60_000);
@@ -213,7 +216,7 @@ class ManagedConnection {
         }
         this.setStatus("connecting");
       }
-      const adapter = this.factory({ ...this.spec }, this.handlers(gen));
+      const adapter = this.factory({ ...this.spec, connectionId: this.spec.id }, this.handlers(gen));
       this.adapter = adapter;
       await adapter.connect();
     } catch (err) {

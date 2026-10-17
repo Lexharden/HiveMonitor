@@ -60,6 +60,7 @@ export function connectionRoutes(deps: AppDeps) {
       b.channelId = b.channelId.replace(/^@/, "");
       if (!/^[A-Za-z0-9._]{2,64}$/.test(b.channelId)) return c.json({ error: "invalid_channel" }, 400);
     }
+    if (b.platform === "twitch" && b.config.mode !== "mock") return c.json({ error: "use_oauth" }, 400);
     if (b.platform === "youtube" && b.config.mode !== "mock") return c.json({ error: "platform_not_available" }, 501);
 
     const [settings] = await deps.adminDb

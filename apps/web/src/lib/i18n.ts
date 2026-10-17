@@ -122,6 +122,12 @@ const es = {
   "int.exists": "Ese canal ya está añadido.",
   "int.notAvailable": "Esta plataforma todavía no está disponible.",
   "int.mockNotAllowed": "El modo demostración está desactivado en este servidor.",
+  "int.twitchConnect": "Autorizar con Twitch",
+  "int.twitchHint": "Se abrirá Twitch para que autorices tu canal. Los tokens se guardan cifrados en el servidor.",
+  "int.twitchOk": "Canal de Twitch conectado.",
+  "int.twitchError": "No se pudo conectar Twitch ({reason}).",
+  "int.twitchNotConfigured": "Este servidor no tiene configurada la aplicación de Twitch.",
+  "int.twitchReauth": "Volver a autorizar",
   "int.noPermission": "No tienes permiso para gestionar integraciones.",
 
   "conn.lost": "Sin conexión con el servidor. Reintentando…",

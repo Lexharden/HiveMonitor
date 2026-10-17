@@ -6,6 +6,7 @@ import type { Config } from "./config.ts";
 import type { Encryptor } from "./crypto.ts";
 import type { Ingest } from "./ingest/manager.ts";
 import type { Logger } from "./logger.ts";
+import type { TwitchService } from "./twitch/service.ts";
 
 export interface AppDeps {
   config: Config;
@@ -19,6 +20,8 @@ export interface AppDeps {
   auth: Auth;
   bus: EventBus;
   ingest: Ingest;
+  /** null si no hay credenciales de aplicación de Twitch. */
+  twitch: TwitchService | null;
   encryptor: Encryptor;
   /** Hook opcional para servir el frontend embebido. */
   staticHandler?: (req: Request) => Promise<Response | null>;

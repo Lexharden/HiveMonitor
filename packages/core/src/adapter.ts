@@ -7,9 +7,16 @@ export interface StatusChange {
   detail?: string;
   /** Para `rate_limited` o reintentos: ms hasta el próximo intento. */
   retryInMs?: number;
+  /**
+   * Con `offline`: el adaptador sigue enganchado (p. ej. suscripciones de Twitch) y avisará solo
+   * cuando el canal vuelva a estar en directo; el supervisor no debe reconectar.
+   */
+  passive?: boolean;
 }
 
 export interface AdapterContext {
+  /** Id de la conexión (platform_connection). */
+  connectionId?: string;
   tenantId: string;
   platform: Platform;
   channelId: string;

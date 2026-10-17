@@ -41,6 +41,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  /** `webhook` (conduit, requiere URL pública https) o `websocket` (desarrollo local). Por defecto según BASE_URL. */
+  TWITCH_EVENTSUB_MODE: z.enum(["webhook", "websocket"]).optional(),
+  /** Secreto de firma de webhooks (10-100 caracteres). Si falta se deriva de BETTER_AUTH_SECRET. */
+  TWITCH_EVENTSUB_SECRET: z.string().min(10).max(100).optional(),
   EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).default(60),
   METRICS_TOKEN: z.string().min(16).optional(),
   /** Permite conexiones `mode: mock` (desarrollo/demos). Por defecto solo fuera de producción. */

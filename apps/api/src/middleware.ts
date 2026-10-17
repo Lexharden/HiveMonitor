@@ -175,6 +175,33 @@ export function requireSuperadmin(): MiddlewareHandler<AppEnv> {
   };
 }
 
+/** Membresía, suspensión y permisos efectivos de un usuario en un tenant (null si no es miembro y no es superadmin). */
+export async function loadTenantAccess(
+  deps: AppDeps,
+  tenantId: string,
+  user: { id: string; isSuperadmin: boolean },
+): Promise<{ role: string; permissions: ReadonlySet<Permission>; suspended: boolean } | null> {
+  const [m] = await deps.adminDb
+    .select({ role: schema.member.role })
+    .from(schema.member)
+    .where(and(eq(schema.member.organizationId, tenantId), eq(schema.member.userId, user.id)))
+    .limit(1);
+  if (!m && !user.isSuperadmin) return null;
+  const [settings] = await deps.adminDb
+    .select({ suspended: schema.tenantSettings.suspended })
+    .from(schema.tenantSettings)
+    .where(eq(schema.tenantSettings.tenantId, tenantId))
+    .limit(1);
+  const custom = await withTenant(deps.appDb, tenantId, (tx) =>
+    tx.select({ key: schema.roleDefinition.key, permissions: schema.roleDefinition.permissions }).from(schema.roleDefinition),
+  );
+  return {
+    role: m?.role ?? "superadmin",
+    permissions: resolvePermissions(m?.role ?? "", custom, user.isSuperadmin),
+    suspended: settings?.suspended ?? false,
+  };
+}
+
 /**
  * Resuelve el contexto de tenant de `/api/t/:tenantId/...`: membresía, suspensión
  * y permisos efectivos. Un no-miembro recibe 404 (no se revela la existencia).
@@ -184,32 +211,13 @@ export function requireTenant(deps: AppDeps, ...needed: Permission[]): Middlewar
     const user = c.get("user");
     const tenantId = c.req.param("tenantId");
     if (!tenantId) throw new HTTPException(400, { message: "tenant requerido" });
-
-    const [m] = await deps.adminDb
-      .select({ role: schema.member.role })
-      .from(schema.member)
-      .where(and(eq(schema.member.organizationId, tenantId), eq(schema.member.userId, user.id)))
-      .limit(1);
-    if (!m && !user.isSuperadmin) throw new HTTPException(404, { message: "not_found" });
-
-    const [settings] = await deps.adminDb
-      .select({ suspended: schema.tenantSettings.suspended })
-      .from(schema.tenantSettings)
-      .where(eq(schema.tenantSettings.tenantId, tenantId))
-      .limit(1);
-    if (settings?.suspended && !user.isSuperadmin) {
-      throw new HTTPException(403, { message: "tenant_suspended" });
-    }
-
-    const custom = await withTenant(deps.appDb, tenantId, (tx) =>
-      tx.select({ key: schema.roleDefinition.key, permissions: schema.roleDefinition.permissions }).from(schema.roleDefinition),
-    );
-    const role = m?.role ?? "superadmin";
-    const permissions = resolvePermissions(m?.role ?? "", custom, user.isSuperadmin);
+    const access = await loadTenantAccess(deps, tenantId, user);
+    if (!access) throw new HTTPException(404, { message: "not_found" });
+    if (access.suspended && !user.isSuperadmin) throw new HTTPException(403, { message: "tenant_suspended" });
     for (const p of needed) {
-      if (!permissions.has(p)) throw new HTTPException(403, { message: "forbidden" });
+      if (!access.permissions.has(p)) throw new HTTPException(403, { message: "forbidden" });
     }
-    c.set("tenant", { tenantId, userId: user.id, role, permissions, isSuperadmin: user.isSuperadmin });
+    c.set("tenant", { tenantId, userId: user.id, role: access.role, permissions: access.permissions, isSuperadmin: user.isSuperadmin });
     await next();
   };
 }

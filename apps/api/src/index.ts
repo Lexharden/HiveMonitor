@@ -11,6 +11,7 @@ import { buildCsp } from "./middleware.ts";
 import { createStaticHandler, dirSource } from "./static.ts";
 import { loadConfig } from "./config.ts";
 import { createEncryptorFromEnv } from "./crypto.ts";
+import { createTwitchService } from "./twitch/service.ts";
 import { createLogger } from "./logger.ts";
 import { startMaintenance } from "./maintenance.ts";
 
@@ -33,7 +34,8 @@ const app = config.DATABASE_APP_URL ? createDb(config.DATABASE_APP_URL, { max: 1
 
 const bus = new InProcessBus((err) => logger.error({ err }, "handler del bus falló"));
 const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
-const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor });
+const twitch = createTwitchService({ config, logger, adminDb: admin.db, encryptor });
+const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor, factories: twitch ? { twitch: twitch.factory } : undefined });
 const auth = createAuth({ config, adminDb: admin.db, logger });
 const webDist = process.env.WEB_DIST ?? fileURLToPath(new URL("../../web/build", import.meta.url));
 const staticHandler = createStaticHandler(dirSource(webDist), (hashes) => buildCsp({ config }, hashes));
@@ -46,6 +48,7 @@ const deps = {
   auth,
   bus,
   ingest,
+  twitch,
   encryptor,
   staticHandler,
 };
@@ -73,6 +76,7 @@ async function shutdown(signal: string) {
   force.unref?.();
   try {
     stopMaintenance();
+    twitch?.stop();
     await server.stop(); // deja terminar las peticiones en curso
     await ingest.close(); // desconecta adaptadores y persiste lo pendiente
     await bus.close();

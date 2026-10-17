@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import { ApiError, type ConnectionInfo, type Platform } from "@hivemonitor/client";
   import Icon from "#lib/components/Icon.svelte";
   import PlatformBadge from "#lib/components/PlatformBadge.svelte";
   import StatusBadge from "#lib/components/StatusBadge.svelte";
-  import { t, type MessageKey } from "#lib/i18n.ts";
+  import { t } from "#lib/i18n.ts";
+  import { openExternal } from "#lib/platform.ts";
   import { app } from "#lib/stores/app.svelte.ts";
   import { live } from "#lib/stores/live.svelte.ts";
 
@@ -14,6 +16,14 @@
   let demo = $state(false);
   let error = $state("");
   let busy = $state(false);
+  let notice = $state<{ ok: boolean; text: string } | null>(null);
+
+  // Retorno del flujo OAuth de Twitch (?twitch=ok | error&reason=...)
+  $effect(() => {
+    const r = page.url.searchParams.get("twitch");
+    if (r === "ok") notice = { ok: true, text: t("int.twitchOk") };
+    else if (r === "error") notice = { ok: false, text: t("int.twitchError", { reason: page.url.searchParams.get("reason") ?? "error" }) };
+  });
 
   const api = $derived(app.org ? app.client.tenant(app.org.id) : null);
   const allowed = $derived(app.can("integrations.manage"));
@@ -59,6 +69,18 @@
     }
   }
 
+  async function authorizeTwitch() {
+    if (!api) return;
+    error = "";
+    try {
+      const { url } = await api.twitchAuthorize(app.native ? "native" : "web");
+      if (app.native) await openExternal(url);
+      else location.href = url;
+    } catch (err) {
+      error = err instanceof ApiError && err.code === "twitch_not_configured" ? t("int.twitchNotConfigured") : t("common.error");
+    }
+  }
+
   async function act(fn: () => Promise<unknown>) {
     error = "";
     try {
@@ -77,6 +99,7 @@
 {#if !allowed}
   <p class="text-fg-2">{t("int.noPermission")}</p>
 {:else}
+  {#if notice}<p class="mb-4 rounded-lg border px-3 py-2 text-sm {notice.ok ? 'border-good/40 bg-good/10 text-good' : 'border-bad/40 bg-bad/10 text-bad'}" role="status">{notice.text}</p>{/if}
   {#if error}<p class="mb-4 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad" role="alert">{error}</p>{/if}
 
   <div class="card mb-6 divide-y divide-border">
@@ -88,6 +111,9 @@
           <p class="mt-1 truncate font-medium">{c.channelName ?? c.channelId}{#if c.config.mode === "mock"}<span class="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg-3">demo</span>{/if}</p>
           {#if c.lastError}<p class="mt-0.5 truncate text-xs text-bad">{c.lastError}</p>{/if}
         </div>
+        {#if c.platform === "twitch" && (c.status === "error" || !c.enabled)}
+          <button class="btn" onclick={authorizeTwitch}>{t("int.twitchReauth")}</button>
+        {/if}
         {#if c.enabled}
           <button class="btn" onclick={() => act(() => api!.disconnect(c.id))}>{t("common.disconnect")}</button>
         {:else}
@@ -109,11 +135,19 @@
         <option value="youtube">{t("platform.youtube")}</option>
       </select>
     </div>
-    <div>
-      <label class="mb-1 block text-sm font-medium" for="chan">{t("int.channel")}</label>
-      <input id="chan" class="input" required maxlength="128" placeholder="@usuario" bind:value={channel} />
-    </div>
-    <button class="btn btn-primary" disabled={busy || !channel}><Icon name="plus" class="size-4" />{t("int.add")}</button>
+    {#if platform === "twitch" && !demo}
+      <p class="self-center text-sm text-fg-2">{t("int.twitchHint")}</p>
+    {:else}
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="chan">{t("int.channel")}</label>
+        <input id="chan" class="input" required maxlength="128" placeholder="@usuario" bind:value={channel} />
+      </div>
+    {/if}
+    {#if platform === "twitch" && !demo}
+      <button type="button" class="btn btn-primary sm:col-span-2" onclick={authorizeTwitch}>{t("int.twitchConnect")}</button>
+    {:else}
+      <button class="btn btn-primary" disabled={busy || !channel}><Icon name="plus" class="size-4" />{t("int.add")}</button>
+    {/if}
     <label class="flex items-center gap-2 text-sm text-fg-2 sm:col-span-3">
       <input type="checkbox" bind:checked={demo} class="size-4 accent-[var(--accent)]" />
       {t("int.demo")}

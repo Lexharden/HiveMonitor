@@ -6,6 +6,7 @@ import { adminRoutes } from "./routes/admin.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { meRoutes } from "./routes/me.ts";
 import { tenantRoutes } from "./routes/tenant.ts";
+import { twitchCallbackRoutes, twitchWebhookRoutes } from "./routes/twitch.ts";
 
 export function createApp(deps: AppDeps) {
   const app = new Hono<AppEnv>();
@@ -18,6 +19,7 @@ export function createApp(deps: AppDeps) {
   app.use("/api/t/*", wsOriginGuard(deps));
 
   app.route("/", healthRoutes(deps));
+  app.route("/webhooks/twitch", twitchWebhookRoutes(deps));
 
   // Better Auth. Se sobrescribe X-Forwarded-For con la IP ya validada para que no sea falsificable.
   app.on(["GET", "POST"], "/api/auth/*", (c) => {
@@ -26,6 +28,7 @@ export function createApp(deps: AppDeps) {
     return deps.auth.handler(new Request(c.req.raw, { headers }));
   });
 
+  app.route("/api/integrations", twitchCallbackRoutes(deps));
   app.route("/api", meRoutes(deps));
   app.route("/api/admin", adminRoutes(deps));
   const tenant = new Hono<AppEnv>();
