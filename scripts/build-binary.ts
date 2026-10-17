@@ -30,6 +30,16 @@ function run(cmd: string[], cwd = root) {
   if (p.exitCode !== 0) throw new Error(`falló: ${cmd.join(" ")}`);
 }
 
+/** Ejecuta y devuelve stdout; cadena vacía si el programa no existe o falla (spawnSync lanza si falta el ejecutable). */
+function tryRun(cmd: string[]): string {
+  try {
+    const p = Bun.spawnSync(cmd, { cwd: root });
+    return p.exitCode === 0 ? p.stdout.toString().trim() : "";
+  } catch {
+    return "";
+  }
+}
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
@@ -39,7 +49,7 @@ function walk(dir: string): string[] {
 
 function version(): string {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string };
-  const sha = Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"], { cwd: root }).stdout.toString().trim();
+  const sha = tryRun(["git", "rev-parse", "--short", "HEAD"]); // en la imagen de build no hay git
   return sha ? `${pkg.version}+${sha}` : pkg.version;
 }
 
@@ -88,7 +98,7 @@ try {
     console.log(`  ${out} (${(statSync(out).size / 1048576).toFixed(0)} MB)`);
   }
   // Puente de TikTok (Rust): solo para el sistema donde se compila (la compilación cruzada requiere su propia toolchain)
-  if (!args.includes("--skip-bridge") && Bun.spawnSync(["cargo", "--version"]).exitCode === 0) {
+  if (!args.includes("--skip-bridge") && tryRun(["cargo", "--version"]) !== "") {
     const bridgeDir = join(root, "apps/tiktok-bridge");
     console.log("\n→ compilando tiktok-bridge (cargo --release)");
     run(["cargo", "build", "--release", "--locked"], bridgeDir);
