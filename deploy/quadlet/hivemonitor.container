@@ -1,0 +1,27 @@
+# Instalar en ~/.config/containers/systemd/ (rootless) o /etc/containers/systemd/
+[Unit]
+Description=HiveMonitor
+Requires=hivemonitor-db.service
+After=hivemonitor-db.service
+
+[Container]
+ContainerName=hivemonitor
+Image=localhost/hivemonitor:latest
+Network=hivemonitor.network
+PublishPort=127.0.0.1:3000:3000
+# .env completo (secretos, BASE_URL, CORS_ORIGINS…) con DATABASE_URL apuntando a hivemonitor-db
+EnvironmentFile=%h/.config/hivemonitor/hivemonitor.env
+ReadOnly=true
+Tmpfs=/tmp
+DropCapability=ALL
+NoNewPrivileges=true
+HealthCmd=/app/hivemonitor healthcheck
+HealthInterval=30s
+HealthStartPeriod=20s
+
+[Service]
+Restart=always
+TimeoutStopSec=25
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,20 @@
+# HiveMonitor — imagen mínima (Docker y Podman, rootless). Contexto de build: raíz del repositorio.
+#   podman build -f deploy/Containerfile -t hivemonitor .
+#   docker build -f deploy/Containerfile -t hivemonitor .
+
+# --- 1) Compilar el binario único (frontend y migraciones embebidos) ---
+FROM docker.io/oven/bun:1.4 AS build
+WORKDIR /src
+COPY . .
+RUN bun install --frozen-lockfile
+ARG TARGET=linux-x64
+RUN bun scripts/build-binary.ts --targets=${TARGET} && mv dist/hivemonitor-${TARGET} /hivemonitor && chmod 755 /hivemonitor
+
+# --- 2) Imagen final: sin shell ni gestor de paquetes, usuario no root ---
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=build /hivemonitor /app/hivemonitor
+USER 65532:65532
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["/app/hivemonitor", "healthcheck"]
+ENTRYPOINT ["/app/hivemonitor"]

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SvelteSet } from "svelte/reactivity";
   import type { NormalizedEvent, Platform } from "@hivemonitor/client";
   import PlatformBadge from "#lib/components/PlatformBadge.svelte";
   import { fmtMoney, fmtNumber, fmtTime } from "#lib/format.ts";
@@ -9,14 +10,12 @@
   type FeedType = (typeof TYPES)[number];
   const PLATFORMS: Platform[] = ["tiktok", "twitch", "youtube"];
 
-  let types = $state<Set<FeedType>>(new Set(TYPES));
+  const types = new SvelteSet<FeedType>(TYPES);
   let platform = $state<Platform | "all">("all");
 
   function toggle(ty: FeedType) {
-    const next = new Set(types);
-    if (next.has(ty)) next.delete(ty);
-    else next.add(ty);
-    types = next;
+    if (types.has(ty)) types.delete(ty);
+    else types.add(ty);
   }
 
   const feed = $derived(

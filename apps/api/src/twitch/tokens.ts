@@ -34,14 +34,12 @@ export class TwitchTokenManager implements TwitchTokenService {
   }
 
   private async refreshOrValidate(id: string, cur: TwitchCredentials, mustRefresh: boolean): Promise<TwitchCredentials> {
-    let needsRefresh = mustRefresh;
-    if (!needsRefresh) {
+    if (!mustRefresh) {
       const ok = await validateToken(this.o.oauth, cur.accessToken).catch(() => true); // fallo de red ≠ token inválido
       if (ok) {
         this.lastValidated.set(id, Date.now());
         return cur;
       }
-      needsRefresh = true;
     }
     try {
       const t = await refreshTokens(this.o.oauth, cur.refreshToken, cur.scopes);

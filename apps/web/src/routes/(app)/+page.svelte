@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Platform } from "@hivemonitor/client";
   import PlatformBadge from "#lib/components/PlatformBadge.svelte";
   import StatCard from "#lib/components/StatCard.svelte";
   import StatusBadge from "#lib/components/StatusBadge.svelte";
@@ -33,7 +32,6 @@
   const ageS = (iso: string) => Math.max(0, Math.round((live.now - new Date(iso).getTime()) / 1000));
   const shown = (m: Record<string, unknown>) => Object.entries(m).slice(0, 6);
 
-  const platforms = $derived([...new Set(live.connections.map((c) => c.platform))] as Platform[]);
   const retryIn = (iso?: string) => (iso ? Math.max(0, Math.round((new Date(iso).getTime() - live.now) / 1000)) : null);
 </script>
 

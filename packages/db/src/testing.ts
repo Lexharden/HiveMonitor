@@ -35,7 +35,7 @@ export async function startTestPostgres(): Promise<TestPostgres> {
   const external = process.env.TEST_DATABASE_URL;
   let adminUrl: string;
   let appUrl: string;
-  let stopServer = async () => {};
+  let stopServer: () => Promise<void>;
 
   if (external) {
     const base = new URL(external);

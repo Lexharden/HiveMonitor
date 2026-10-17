@@ -1,0 +1,36 @@
+# Modo nativo: binario único + PostgreSQL local o remoto.
+# Instalación: ver docs/deploy-nativo.md
+[Unit]
+Description=HiveMonitor
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hivemonitor
+Group=hivemonitor
+ExecStart=/opt/hivemonitor/hivemonitor
+EnvironmentFile=/etc/hivemonitor/hivemonitor.env
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=25
+KillSignal=SIGTERM
+
+# Aislamiento (mínimo privilegio)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

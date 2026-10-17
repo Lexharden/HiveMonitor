@@ -1,0 +1,22 @@
+# Instalar en ~/.config/containers/systemd/ (rootless) o /etc/containers/systemd/
+[Unit]
+Description=HiveMonitor - PostgreSQL
+
+[Container]
+ContainerName=hivemonitor-db
+Image=docker.io/library/postgres:16-alpine
+Network=hivemonitor.network
+Volume=hivemonitor-db.volume:/var/lib/postgresql/data
+EnvironmentFile=%h/.config/hivemonitor/db.env
+NoNewPrivileges=true
+HealthCmd=pg_isready -U hive -d hivemonitor
+HealthInterval=10s
+HealthRetries=10
+Notify=healthy
+
+[Service]
+Restart=always
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

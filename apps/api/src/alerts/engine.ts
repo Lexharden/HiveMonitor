@@ -251,14 +251,12 @@ export class AlertEngine {
       data,
     };
     await withTenant(this.o.appDb, tenantId, (tx) =>
-      tx
-        .insert(schema.alertEvent)
-        .values({
-          id: alert.id,
-          tenantId,
-          ruleId: rule.id,
-          data: { message, type: rule.type, ruleName: rule.name, channels: rule.channels, ...data },
-        }),
+      tx.insert(schema.alertEvent).values({
+        id: alert.id,
+        tenantId,
+        ruleId: rule.id,
+        data: { message, type: rule.type, ruleName: rule.name, channels: rule.channels, ...data },
+      }),
     );
     if (rule.channels.includes("panel") || rule.channels.includes("native")) {
       void this.o.bus.publish({ kind: "alert", tenantId, alert });

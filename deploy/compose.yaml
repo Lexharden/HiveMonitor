@@ -1,0 +1,53 @@
+# HiveMonitor con Docker Compose o Podman Compose (rootless).
+#   cp .env.example .env   # y rellena los secretos
+#   docker compose -f deploy/compose.yaml --env-file .env up -d --build
+#   podman compose -f deploy/compose.yaml --env-file .env up -d --build
+name: hivemonitor
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-hivemonitor}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hive} -d ${POSTGRES_DB:-hivemonitor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt: ["no-new-privileges:true"]
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Containerfile
+    image: hivemonitor:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ../.env
+    environment:
+      # Dentro de la red interna la base de datos se llama "db"
+      DATABASE_URL: postgres://${POSTGRES_USER:-hive}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-hivemonitor}
+      DATABASE_APP_URL: postgres://hive_app:${DATABASE_APP_PASSWORD:?define DATABASE_APP_PASSWORD en .env}@db:5432/${POSTGRES_DB:-hivemonitor}
+      DATABASE_APP_PASSWORD: ${DATABASE_APP_PASSWORD}
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000" # solo local: expónlo con el reverse proxy
+    networks: [internal]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 20s
+
+networks:
+  internal: {}
+
+volumes:
+  db-data: {}
