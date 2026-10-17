@@ -107,10 +107,46 @@ export function originCheck(deps: AppDeps): MiddlewareHandler {
   };
 }
 
+/**
+ * Los navegadores no pueden poner cabeceras en un WebSocket: el cliente envía el token como
+ * subprotocolo `bearer.<token en base64url>` y aquí se traduce a `Authorization: Bearer`.
+ */
+export function authHeaders(h: Headers): Headers {
+  if (h.get("authorization")) return h;
+  const proto = h.get("sec-websocket-protocol");
+  const token = proto
+    ?.split(",")
+    .map((s) => s.trim())
+    .find((s) => s.startsWith("bearer."))
+    ?.slice("bearer.".length);
+  if (!token) return h;
+  let decoded: string;
+  try {
+    decoded = Buffer.from(token, "base64url").toString("utf8");
+  } catch {
+    return h;
+  }
+  const copy = new Headers(h);
+  copy.set("authorization", `Bearer ${decoded}`);
+  return copy;
+}
+
+/** Cross-Site WebSocket Hijacking: un upgrade con Origin no permitido se rechaza. */
+export function wsOriginGuard(deps: AppDeps): MiddlewareHandler {
+  const allowed = new Set([deps.config.BASE_URL, ...deps.config.CORS_ORIGINS]);
+  return async (c, next) => {
+    if (c.req.header("upgrade")?.toLowerCase() === "websocket") {
+      const origin = c.req.header("origin");
+      if (origin && !allowed.has(origin)) return c.json({ error: "origin_not_allowed" }, 403);
+    }
+    return next();
+  };
+}
+
 /** Exige sesión válida y deja el usuario en el contexto. */
 export function requireUser(deps: AppDeps): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const session = await deps.auth.api.getSession({ headers: c.req.raw.headers });
+    const session = await deps.auth.api.getSession({ headers: authHeaders(c.req.raw.headers) });
     if (!session) throw new HTTPException(401, { message: "unauthorized" });
     const u = session.user as typeof session.user & { isSuperadmin?: boolean };
     c.set("user", { id: u.id, email: u.email, name: u.name, isSuperadmin: u.isSuperadmin === true });

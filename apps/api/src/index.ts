@@ -1,8 +1,11 @@
 import { createDb, migrate } from "@hivemonitor/db";
+import { websocket } from "hono/bun";
 import { sql } from "drizzle-orm";
 import { createApp } from "./app.ts";
 import { createAuth } from "./auth.ts";
 import { InProcessBus } from "./bus/in-process.ts";
+import { createIngest } from "./ingest/manager.ts";
+import { IngestPipeline } from "./ingest/pipeline.ts";
 import { loadConfig } from "./config.ts";
 import { createEncryptorFromEnv } from "./crypto.ts";
 import { createLogger } from "./logger.ts";
@@ -26,6 +29,8 @@ if (!config.DATABASE_APP_URL) {
 const app = config.DATABASE_APP_URL ? createDb(config.DATABASE_APP_URL, { max: 10 }) : admin;
 
 const bus = new InProcessBus((err) => logger.error({ err }, "handler del bus falló"));
+const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
+const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor });
 const auth = createAuth({ config, adminDb: admin.db, logger });
 const deps = {
   config,
@@ -35,8 +40,12 @@ const deps = {
   ping: async () => void (await admin.db.execute(sql`select 1`)),
   auth,
   bus,
-  encryptor: createEncryptorFromEnv(config.ENCRYPTION_KEY),
+  ingest,
+  encryptor,
 };
+
+const orphans = await IngestPipeline.closeOrphans(admin.db);
+if (orphans) logger.info({ orphans }, "sesiones huérfanas cerradas");
 
 const stopMaintenance = startMaintenance(admin.db, config.EVENT_RETENTION_DAYS, logger);
 const server = Bun.serve({
@@ -44,8 +53,10 @@ const server = Bun.serve({
   port: config.PORT,
   idleTimeout: 120,
   fetch: createApp(deps).fetch,
+  websocket,
 });
 logger.info({ url: `http://${config.HOST}:${server.port}` }, "HiveMonitor API escuchando");
+void ingest.startAll().then((n) => logger.info({ connections: n }, "conexiones de plataformas iniciadas"));
 
 let stopping = false;
 async function shutdown(signal: string) {
@@ -57,6 +68,7 @@ async function shutdown(signal: string) {
   try {
     stopMaintenance();
     await server.stop(); // deja terminar las peticiones en curso
+    await ingest.close(); // desconecta adaptadores y persiste lo pendiente
     await bus.close();
     await admin.close();
     if (app !== admin) await app.close();

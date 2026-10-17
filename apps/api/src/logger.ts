@@ -28,7 +28,7 @@ const REDACT = [
 
 export function createLogger(config: Pick<Config, "LOG_LEVEL" | "NODE_ENV">): Logger {
   return pino({
-    level: config.NODE_ENV === "test" ? "silent" : config.LOG_LEVEL,
+    level: config.NODE_ENV === "test" && !process.env.HIVE_TEST_LOGS ? "silent" : config.LOG_LEVEL,
     redact: { paths: REDACT, censor: "[redacted]" },
     base: { app: "hivemonitor" },
     timestamp: pino.stdTimeFunctions.isoTime,

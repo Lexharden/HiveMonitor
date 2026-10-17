@@ -6,6 +6,7 @@ import { createAuth } from "../src/auth.ts";
 import { InProcessBus } from "../src/bus/in-process.ts";
 import { loadConfig } from "../src/config.ts";
 import type { AppDeps } from "../src/context.ts";
+import { createIngest } from "../src/ingest/manager.ts";
 import { createEncryptorFromEnv } from "../src/crypto.ts";
 import { createLogger } from "../src/logger.ts";
 
@@ -48,6 +49,9 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
     logger,
     onInvitation: async (i) => void invitations.push({ email: i.email, role: i.role, link: i.link }),
   });
+  const bus = new InProcessBus();
+  const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
+  const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor });
   const deps: AppDeps = {
     config,
     logger,
@@ -55,8 +59,9 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
     appDb: app.db,
     ping: async () => void (await admin.db.execute(sql`select 1`)),
     auth,
-    bus: new InProcessBus(),
-    encryptor: createEncryptorFromEnv(config.ENCRYPTION_KEY),
+    bus,
+    ingest,
+    encryptor,
   };
   const http = createApp(deps);
 
@@ -89,6 +94,7 @@ export async function createTestEnv(extra: Record<string, string> = {}): Promise
       return token;
     },
     async stop() {
+      await deps.ingest.close();
       await deps.bus.close();
       await app.close();
       await admin.close();

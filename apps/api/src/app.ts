@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppDeps, AppEnv } from "./context.ts";
-import { corsMiddleware, originCheck, rateLimit, requestContext, requireUser, securityHeaders } from "./middleware.ts";
+import { corsMiddleware, originCheck, rateLimit, requestContext, requireUser, securityHeaders, wsOriginGuard } from "./middleware.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { meRoutes } from "./routes/me.ts";
@@ -15,6 +15,7 @@ export function createApp(deps: AppDeps) {
   app.use("/api/*", corsMiddleware(deps));
   app.use("/api/*", rateLimit(deps.config.RATE_LIMIT_PER_MINUTE));
   app.use("/api/*", originCheck(deps));
+  app.use("/api/t/*", wsOriginGuard(deps));
 
   app.route("/", healthRoutes(deps));
 

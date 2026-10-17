@@ -16,6 +16,7 @@
       "name": "@hivemonitor/api",
       "version": "0.1.0",
       "dependencies": {
+        "@hivemonitor/adapters": "workspace:*",
         "@hivemonitor/core": "workspace:*",
         "@hivemonitor/db": "workspace:*",
         "better-auth": "^1.7.10",
@@ -63,6 +64,9 @@
     "packages/adapters": {
       "name": "@hivemonitor/adapters",
       "version": "0.1.0",
+      "dependencies": {
+        "@hivemonitor/core": "workspace:*",
+      },
     },
     "packages/client": {
       "name": "@hivemonitor/client",

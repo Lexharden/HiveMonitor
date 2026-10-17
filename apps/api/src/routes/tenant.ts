@@ -2,30 +2,15 @@ import { desc } from "drizzle-orm";
 import { Hono } from "hono";
 import { schema, withTenant } from "@hivemonitor/db";
 import type { AppDeps, AppEnv } from "../context.ts";
+import { connectionRoutes } from "./connections.ts";
+import { realtimeRoutes } from "./realtime.ts";
 import { requireTenant } from "../middleware.ts";
 
 /** Rutas dependientes del tenant: `/api/t/:tenantId/...` (requireUser ya aplicado). */
 export function tenantRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
-
-  r.get("/connections", requireTenant(deps, "stream.view"), async (c) => {
-    const { tenantId } = c.get("tenant");
-    const rows = await withTenant(deps.appDb, tenantId, (tx) =>
-      tx
-        .select({
-          id: schema.platformConnection.id,
-          platform: schema.platformConnection.platform,
-          channelId: schema.platformConnection.channelId,
-          channelName: schema.platformConnection.channelName,
-          status: schema.platformConnection.status,
-          enabled: schema.platformConnection.enabled,
-          lastError: schema.platformConnection.lastError,
-          updatedAt: schema.platformConnection.updatedAt,
-        })
-        .from(schema.platformConnection),
-    );
-    return c.json({ connections: rows });
-  });
+  r.route("/", connectionRoutes(deps));
+  r.route("/", realtimeRoutes(deps));
 
   r.get("/audit", requireTenant(deps, "members.manage"), async (c) => {
     const { tenantId } = c.get("tenant");

@@ -43,6 +43,13 @@ const envSchema = z.object({
 
   EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).default(60),
   METRICS_TOKEN: z.string().min(16).optional(),
+  /** Permite conexiones `mode: mock` (desarrollo/demos). Por defecto solo fuera de producción. */
+  ALLOW_MOCK_ADAPTERS: bool.optional(),
+  /** Conexiones simultáneas en fase de connect() para TikTok (servicio de firma externo). */
+  TIKTOK_MAX_CONCURRENCY: z.coerce.number().int().min(1).default(2),
+  RECONNECT_BASE_MS: z.coerce.number().int().min(1).default(2000),
+  RECONNECT_MAX_MS: z.coerce.number().int().min(1).default(300000),
+  OFFLINE_RETRY_MS: z.coerce.number().int().min(1).default(60000),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
 });
 

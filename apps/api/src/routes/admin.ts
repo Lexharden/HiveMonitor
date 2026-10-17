@@ -56,6 +56,8 @@ export function adminRoutes(deps: AppDeps) {
       meta: body.data,
       ip: c.get("ip"),
     });
+    if (body.data.suspended === true) await deps.ingest.stopTenant(id);
+    else if (body.data.suspended === false) await deps.ingest.startTenant(id);
     return c.json({ ok: true });
   });
 

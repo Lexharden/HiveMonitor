@@ -18,6 +18,7 @@ const pg = new EmbeddedPostgres({
   password: "hive",
   port,
   persistent: true,
+  initdbFlags: ["--encoding=UTF8", "--locale=C"],
   onLog: () => {},
   onError: () => {},
 });

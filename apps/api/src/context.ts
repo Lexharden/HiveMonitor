@@ -4,6 +4,7 @@ import type { EventBus } from "@hivemonitor/core";
 import type { Auth } from "./auth.ts";
 import type { Config } from "./config.ts";
 import type { Encryptor } from "./crypto.ts";
+import type { Ingest } from "./ingest/manager.ts";
 import type { Logger } from "./logger.ts";
 
 export interface AppDeps {
@@ -17,6 +18,7 @@ export interface AppDeps {
   ping: () => Promise<void>;
   auth: Auth;
   bus: EventBus;
+  ingest: Ingest;
   encryptor: Encryptor;
   /** Hook opcional para servir el frontend embebido. */
   staticHandler?: (req: Request) => Promise<Response | null>;

@@ -64,6 +64,7 @@ export async function startTestPostgres(): Promise<TestPostgres> {
       password: "postgres",
       port,
       persistent: false,
+      initdbFlags: ["--encoding=UTF8", "--locale=C"],
       onLog: () => {},
       onError: () => {},
     });

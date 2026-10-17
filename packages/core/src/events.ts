@@ -99,3 +99,18 @@ export function parseEvent(input: unknown): NormalizedEvent {
 
 export const CONNECTION_STATUSES = ["connecting", "live", "offline", "error", "rate_limited"] as const;
 export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
+
+/** Permiso necesario para ver cada tipo de evento (filtrado de SSE por permisos del usuario). */
+export const EVENT_PERMISSION: Record<EventType, "chat.view" | "events.view" | "stream.view"> = {
+  chat: "chat.view",
+  donation: "events.view",
+  follow: "events.view",
+  subscription: "events.view",
+  raid: "events.view",
+  like: "events.view",
+  share: "events.view",
+  moderation: "events.view",
+  viewer_count: "stream.view",
+  stream_start: "stream.view",
+  stream_end: "stream.view",
+};

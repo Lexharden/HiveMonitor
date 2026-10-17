@@ -57,7 +57,8 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
       updateAge: 60 * 60 * 24,
     },
     rateLimit: {
-      enabled: true,
+      // El limitador es global al proceso; en tests todos comparten IP
+      enabled: config.NODE_ENV !== "test",
       window: 60,
       max: 100,
       customRules: {
