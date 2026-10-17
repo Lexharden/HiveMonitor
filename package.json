@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": ["apps/*", "packages/*", "scripts"],
   "scripts": {
     "dev:web": "bun --filter @hivemonitor/web dev",
     "dev:api": "bun --filter @hivemonitor/api dev",
@@ -12,5 +12,12 @@
     "build:web": "bun --filter @hivemonitor/web build",
     "check": "bun --filter '*' check",
     "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3",
+    "eslint": "^10.13.0",
+    "postgres": "^3.4.9",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
   }
 }

@@ -1,0 +1,47 @@
+import type { Permission } from "@hivemonitor/core";
+import type { Database } from "@hivemonitor/db";
+import type { EventBus } from "@hivemonitor/core";
+import type { Auth } from "./auth.ts";
+import type { Config } from "./config.ts";
+import type { Encryptor } from "./crypto.ts";
+import type { Logger } from "./logger.ts";
+
+export interface AppDeps {
+  config: Config;
+  logger: Logger;
+  /** Conexión propietaria (autenticación, superadmin, tareas globales). */
+  adminDb: Database;
+  /** Conexión hive_app: sujeta a RLS; todo acceso a datos de tenant pasa por withTenant. */
+  appDb: Database;
+  /** Cliente SQL crudo del pool de administración (readyz). */
+  ping: () => Promise<void>;
+  auth: Auth;
+  bus: EventBus;
+  encryptor: Encryptor;
+  /** Hook opcional para servir el frontend embebido. */
+  staticHandler?: (req: Request) => Promise<Response | null>;
+}
+
+export interface AuthedUser {
+  id: string;
+  email: string;
+  name: string;
+  isSuperadmin: boolean;
+}
+
+export interface TenantContext {
+  tenantId: string;
+  userId: string;
+  role: string;
+  permissions: ReadonlySet<Permission>;
+  isSuperadmin: boolean;
+}
+
+export type AppEnv = {
+  Variables: {
+    ip: string;
+    requestId: string;
+    user: AuthedUser;
+    tenant: TenantContext;
+  };
+};
