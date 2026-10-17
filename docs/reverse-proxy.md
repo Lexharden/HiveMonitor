@@ -1,4 +1,4 @@
-# Reverse proxy (Nginx Proxy Manager)
+# Reverse proxy (Nginx Proxy Manager y Nginx nativo)
 
 Ejemplo: `https://hivemonitor.yafel.dev` → HiveMonitor en `127.0.0.1:3000` (o `hivemonitor:3000` si NPM comparte red con el contenedor).
 
@@ -33,6 +33,21 @@ chunked_transfer_encoding on;
 
 El flujo SSE envía un latido cada 15 s y se cierra solo a los 30 min para reevaluar permisos (el cliente reconecta); aun así
 `proxy_read_timeout` por debajo de ~60 s cortaría los flujos.
+
+## Nginx nativo (sin Proxy Manager)
+
+Configuración lista en [`deploy/nginx/hivemonitor.conf`](../deploy/nginx/hivemonitor.conf): redirección a HTTPS, TLS (rutas de certbot), WebSocket, SSE
+(sin buffering, tiempos de 1 h), cabeceras `X-Forwarded-*` y límite de cuerpo.
+
+```bash
+sudo cp deploy/nginx/hivemonitor.conf /etc/nginx/conf.d/hivemonitor.conf
+sudo sed -i 's/hivemonitor.yafel.dev/TU.DOMINIO/g' /etc/nginx/conf.d/hivemonitor.conf
+sudo certbot certonly --nginx -d TU.DOMINIO
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+En el `.env` de HiveMonitor: `BASE_URL=https://TU.DOMINIO` y `TRUSTED_PROXIES=127.0.0.1` (Nginx en el mismo host; con `HOST=127.0.0.1` solo el proxy llega a la app).
+Si emites el certificado antes de activar el bloque 443, comenta temporalmente ese `server` y usa solo el de puerto 80.
 
 ## Webhook de Twitch (EventSub)
 

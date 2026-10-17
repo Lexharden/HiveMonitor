@@ -55,6 +55,10 @@ Regístrate en la web y luego:
 sudo -u hivemonitor env $(cat /etc/hivemonitor/hivemonitor.env | xargs) /opt/hivemonitor/hivemonitor make-superadmin tu@correo.com
 ```
 
+## 6. Nginx
+
+Publica el servicio con TLS usando [`deploy/nginx/hivemonitor.conf`](../deploy/nginx/hivemonitor.conf) (instrucciones en [reverse-proxy.md](reverse-proxy.md)).
+
 ## Operación
 
 - Actualizar: reemplaza el binario y `systemctl restart hivemonitor` (SIGTERM = apagado ordenado, hasta 25 s).
