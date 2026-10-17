@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [0.2.1] - 2026-10-17
+
+### Corregido
+
+- El build de la imagen fallaba por usar `git` y `cargo` inexistentes en la etapa de Bun; ahora son opcionales.
+- Aviso de `tsconfig` de SvelteKit sobre el service worker; `.dockerignore` añadido.
+
 ## [0.2.0] - 2026-10-17
 
 ### Añadido
