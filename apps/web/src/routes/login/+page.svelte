@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { onMount } from "svelte";
   import { ApiError } from "@hivemonitor/client";
   import AuthCard from "#lib/components/AuthCard.svelte";
@@ -18,6 +19,11 @@
   onMount(() => {
     if (!app.native || app.serverUrl) void app.loadPublicMeta();
   });
+
+  // Vuelta del proveedor con error (p. ej. cuenta nueva sin invitación): Better Auth añade ?error=…
+  const oauthError = $derived(page.url.searchParams.get("error"));
+  const oauthMessage = $derived(!oauthError ? "" : app.meta?.signupMode !== "open" ? t("auth.socialDenied") : t("auth.socialError"));
+  const providers = $derived(app.meta?.socialProviders ?? []);
 
   $effect(() => {
     if (app.me) void goto("/", { replaceState: true });
@@ -59,7 +65,7 @@
   async function social(provider: "twitch" | "google") {
     error = "";
     try {
-      const url = await app.client.auth.socialSignIn(provider, location.origin + "/");
+      const url = await app.client.auth.socialSignIn(provider, location.origin + "/", location.origin + "/login");
       if (!url) error = t("common.error");
       else if (app.native) await openExternal(url);
       else location.href = url;
@@ -102,18 +108,19 @@
       <input id="password" class="input" type="password" autocomplete="current-password" required bind:value={password} />
       <p class="mt-1 text-right text-xs"><a class="text-accent hover:underline" href="/forgot-password">{t("auth.forgot")}</a></p>
     </div>
-    {#if error}<p class="text-sm text-bad" role="alert">{error}</p>{/if}
+    {#if error || oauthMessage}<p class="text-sm text-bad" role="alert">{error || oauthMessage}</p>{/if}
     <button class="btn btn-primary w-full" disabled={busy}>{t("auth.login")}</button>
   </form>
 
-  {#if !app.native}
+  {#if !app.native && providers.length > 0}
     <div class="my-4 flex items-center gap-3 text-xs text-fg-3">
       <span class="h-px flex-1 bg-border"></span>o<span class="h-px flex-1 bg-border"></span>
     </div>
     <div class="grid gap-2">
-      <button class="btn" onclick={() => social("twitch")}>{t("auth.withTwitch")}</button>
-      <button class="btn" onclick={() => social("google")}>{t("auth.withGoogle")}</button>
+      {#if providers.includes("twitch")}<button class="btn" onclick={() => social("twitch")}>{t("auth.withTwitch")}</button>{/if}
+      {#if providers.includes("google")}<button class="btn" onclick={() => social("google")}>{t("auth.withGoogle")}</button>{/if}
     </div>
+    {#if app.meta?.signupMode === "invite"}<p class="mt-2 text-center text-xs text-fg-3">{t("auth.socialNote")}</p>{/if}
   {/if}
 
   {#if !app.meta || app.meta.signupMode !== "closed" || app.meta.firstRun}

@@ -296,8 +296,13 @@ export function createClient(opts: ClientOptions = {}) {
       signInEmail: (email: string, password: string) => post<unknown>("/api/auth/sign-in/email", { email, password }),
       signUpEmail: (name: string, email: string, password: string) => post<unknown>("/api/auth/sign-up/email", { name, email, password }),
       /** URL del flujo OAuth (redirección completa; en Tauri se abre en el navegador del sistema). */
-      async socialSignIn(provider: "twitch" | "google", callbackURL: string) {
-        const r = await post<{ url?: string }>("/api/auth/sign-in/social", { provider, callbackURL, disableRedirect: true });
+      async socialSignIn(provider: "twitch" | "google", callbackURL: string, errorCallbackURL?: string) {
+        const r = await post<{ url?: string }>("/api/auth/sign-in/social", {
+          provider,
+          callbackURL,
+          errorCallbackURL,
+          disableRedirect: true,
+        });
         return r.url ?? null;
       },
       requestPasswordReset: (email: string, redirectTo: string) => post<unknown>("/api/auth/request-password-reset", { email, redirectTo }),
