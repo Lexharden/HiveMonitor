@@ -67,6 +67,7 @@ const deps = {
   twitch,
   encryptor,
   staticHandler,
+  emailEnabled: Boolean(config.SMTP_URL),
 };
 
 const orphans = await IngestPipeline.closeOrphans(admin.db);

@@ -4,9 +4,20 @@ import { PERMISSIONS, SYSTEM_ROLES, SYSTEM_ROLE_LABELS, resolvePermissions } fro
 import { schema, withTenant } from "@hivemonitor/db";
 import type { AppDeps, AppEnv } from "../context.ts";
 import { requireUser } from "../middleware.ts";
+import { userCount } from "../signup.ts";
 
 export function meRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
+
+  /** Datos públicos para las pantallas de acceso: política de registro, primera instalación y si hay correo. */
+  r.get("/meta/public", async (c) =>
+    c.json({
+      signupMode: deps.config.SIGNUP_MODE,
+      firstRun: (await userCount(deps.adminDb)) === 0,
+      emailEnabled: deps.emailEnabled,
+      socialProviders: [deps.config.TWITCH_CLIENT_ID && "twitch", deps.config.GOOGLE_CLIENT_ID && "google"].filter(Boolean),
+    }),
+  );
 
   r.get("/meta/roles", (c) =>
     c.json({
