@@ -51,14 +51,15 @@ Los tests usan PostgreSQL embebido, o `TEST_DATABASE_URL` si existe (así corre 
 
 Un mismo artefacto, tres formas. Toda la configuración es por variables de entorno (`.env.example`).
 
-| Modo                                | Guía                                           |
-| ----------------------------------- | ---------------------------------------------- |
-| Nativo (binario + systemd)          | [docs/deploy-nativo.md](docs/deploy-nativo.md) |
-| Docker Compose                      | [docs/deploy-docker.md](docs/deploy-docker.md) |
-| Podman rootless (compose o Quadlet) | [docs/deploy-podman.md](docs/deploy-podman.md) |
-| Detrás de Nginx Proxy Manager       | [docs/reverse-proxy.md](docs/reverse-proxy.md) |
-| Copias de seguridad y restauración  | [docs/backups.md](docs/backups.md)             |
-| Cliente de escritorio y Android     | [docs/desktop.md](docs/desktop.md)             |
+| Modo                                  | Guía                                           |
+| ------------------------------------- | ---------------------------------------------- |
+| Nativo (binario + systemd)            | [docs/deploy-nativo.md](docs/deploy-nativo.md) |
+| Docker Compose                        | [docs/deploy-docker.md](docs/deploy-docker.md) |
+| Podman rootless (compose o Quadlet)   | [docs/deploy-podman.md](docs/deploy-podman.md) |
+| Detrás de Nginx Proxy Manager         | [docs/reverse-proxy.md](docs/reverse-proxy.md) |
+| Cockpit para tablet / segundo monitor | [docs/cockpit.md](docs/cockpit.md)             |
+| Copias de seguridad y restauración    | [docs/backups.md](docs/backups.md)             |
+| Cliente de escritorio y Android       | [docs/desktop.md](docs/desktop.md)             |
 
 ## Documentación
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { PLATFORMS } from "@hivemonitor/core";
@@ -172,7 +172,12 @@ export function analyticsRoutes(deps: AppDeps) {
           amount: string;
           n: number;
         }[];
-      return { s, timeline, byType, donors };
+      const markers = await tx
+        .select()
+        .from(schema.streamMarker)
+        .where(and(gte(schema.streamMarker.at, s.startedAt), lte(schema.streamMarker.at, s.endedAt ?? new Date())))
+        .orderBy(schema.streamMarker.at);
+      return { s, timeline, byType, donors, markers: markers.filter((m) => !m.platform || m.platform === s.platform) };
     });
     if (!data) return c.json({ error: "not_found" }, 404);
     const { s } = data;
@@ -189,6 +194,7 @@ export function analyticsRoutes(deps: AppDeps) {
       },
       timeline: data.timeline.map((x) => ({ t: new Date(x.t).getTime(), v: x.v })),
       eventsByType: Object.fromEntries(data.byType.map((x) => [x.type, x.n])),
+      markers: data.markers.map((m) => ({ id: m.id, at: m.at.toISOString(), kind: m.kind, label: m.label })),
       topDonors: data.donors.map((d) => ({
         id: d.actor_id,
         name: d.name,

@@ -277,3 +277,30 @@ export const auditLog = pgTable("audit_log", {
   ip: text("ip"),
   at: ts("at").notNull().defaultNow(),
 });
+
+export const streamMarker = pgTable(
+  "stream_marker",
+  {
+    id: text("id").primaryKey(),
+    tenantId: tenantId(),
+    at: ts("at").notNull().defaultNow(),
+    kind: text("kind").notNull(),
+    label: text("label").notNull(),
+    platform: text("platform"),
+    channelId: text("channel_id"),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  },
+  (t) => [index("stream_marker_tenant_idx").on(t.tenantId, t.at)],
+);
+
+export const tenantPref = pgTable(
+  "tenant_pref",
+  {
+    tenantId: tenantId(),
+    key: text("key").notNull(),
+    value: jsonb("value").$type<unknown>().notNull(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.key] })],
+);

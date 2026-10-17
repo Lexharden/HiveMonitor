@@ -2,10 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [0.3.0] - 2026-10-17
 
 ### Añadido
 
+- **Cockpit** (`/cockpit`): pantalla única para tablet y segundo monitor, con soporte de multistream (viewers y tendencia por plataforma, estado de OBS,
+  ritmo del chat y likes, meta de donaciones, top donadores, chat con resaltado de lo importante y moderación a un toque), botón «marcar momento»,
+  silenciar avisos, pantalla siempre encendida, pantalla completa y modo compacto. Marcadores automáticos (raid, donación grande, pico de espectadores). Ver `docs/cockpit.md`.
 - `SIGNUP_MODE` (`open|invite|closed`, por defecto `invite`): control de quién puede crear cuenta; el primer usuario siempre puede.
 - Verificación de correo y recuperación de contraseña por SMTP (pantallas `/forgot-password` y `/reset-password`).
 - `hivemonitor reset-password <correo>` para recuperar acceso sin SMTP.
