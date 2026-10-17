@@ -1,20 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "hive-monitor",
+  "productName": "HiveMonitor",
   "version": "0.1.0",
-  "identifier": "com.yafeldev.hive-monitor",
+  "identifier": "com.yafeldev.hivemonitor",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "bun --filter @hivemonitor/web dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../build"
+    "beforeBuildCommand": "bun --filter @hivemonitor/web build",
+    "frontendDist": "../../web/build"
   },
   "app": {
     "windows": [
       {
-        "title": "hive-monitor",
-        "width": 800,
-        "height": 600
+        "title": "HiveMonitor",
+        "width": 1200,
+        "height": 800
       }
     ],
     "security": {
