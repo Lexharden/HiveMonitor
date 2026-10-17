@@ -44,6 +44,9 @@ describe("salud", () => {
     const r = await env.call(null, "GET", "/healthz");
     expect(r.headers.get("content-security-policy")).toContain("default-src 'self'");
     expect(r.headers.get("x-frame-options")).toBe("DENY");
+    // solo el reproductor de Twitch puede incrustarse; nosotros no podemos ser incrustados
+    expect(r.headers.get("content-security-policy")).toContain("frame-src https://player.twitch.tv;");
+    expect(r.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   });
 });
 

@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost https: wss: http: ws:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost https: wss: http: ws:; object-src 'none'; base-uri 'self'; frame-src https://player.twitch.tv; frame-ancestors 'none'"
     }
   },
   "bundle": {

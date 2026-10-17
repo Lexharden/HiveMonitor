@@ -50,6 +50,8 @@ export function buildCsp(deps: Pick<AppDeps, "config">, scriptHashes: string[] =
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "https:"],
     "connect-src": ["'self'", ...deps.config.CORS_ORIGINS],
+    // Vista previa del directo en el cockpit: solo el reproductor oficial de Twitch (TikTok no permite incrustar)
+    "frame-src": ["https://player.twitch.tv"],
     "frame-ancestors": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],

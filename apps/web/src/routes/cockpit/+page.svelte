@@ -4,6 +4,7 @@
   import ActivityFeed from "#lib/components/cockpit/ActivityFeed.svelte";
   import ChatFeed from "#lib/components/cockpit/ChatFeed.svelte";
   import GoalBar from "#lib/components/cockpit/GoalBar.svelte";
+  import LivePreview from "#lib/components/cockpit/LivePreview.svelte";
   import Moments from "#lib/components/cockpit/Moments.svelte";
   import Momentum from "#lib/components/cockpit/Momentum.svelte";
   import StatusBar from "#lib/components/cockpit/StatusBar.svelte";
@@ -162,6 +163,7 @@
           <ViewersChart history={live.history} now={live.now} rangeMs={30 * 60_000} height={220} />
         </section>
       {/if}
+      {#if !compact}<LivePreview />{/if}
       <Momentum />
       <GoalBar />
       {#if !compact}<TopDonors />{/if}

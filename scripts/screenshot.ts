@@ -54,6 +54,8 @@ ws.onmessage = (e) => {
   if (m.id && pending.has(m.id)) pending.get(m.id)!(m);
   if (m.method === "Runtime.consoleAPICalled")
     logs.push(`${m.params.type}: ${m.params.args.map((a: any) => a.value ?? a.description).join(" ")}`);
+  if (m.method === "Log.entryAdded" && /Content Security Policy|CSP|Refused/i.test(m.params.entry.text))
+    logs.push(`CSP: ${m.params.entry.text.slice(0, 200)}`);
   if (m.method === "Runtime.exceptionThrown")
     logs.push(`EXC: ${m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text}`);
 };
@@ -119,8 +121,18 @@ await evalJs(
   `fetch('/api/t/${org}/markers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({label:'Jugada épica'})}).then(r=>r.status)`,
 );
 await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await evalJs(`localStorage.setItem('cockpit_preview', '1')`);
 await goto("/cockpit", 9000);
 await shot("12-cockpit-monitor");
+await send("Log.enable");
+console.log(
+  "iframe tras clic en Twitch:",
+  await evalJs(
+    `(() => { const b = [...document.querySelectorAll('[role=tab]')].find((x) => x.textContent.includes('streamer_tw')); b?.click(); return new Promise((r) => setTimeout(() => r(document.querySelector('iframe')?.src ?? 'SIN IFRAME'), 1500)); })()`,
+  ),
+);
+await Bun.sleep(6000);
+await shot("12b-cockpit-twitch-preview");
 await send("Emulation.setDeviceMetricsOverride", { width: 1180, height: 820, deviceScaleFactor: 1, mobile: false });
 await goto("/cockpit", 4000);
 await shot("13-cockpit-tablet-horizontal");
