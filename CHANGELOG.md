@@ -7,6 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 Primera versión.
 
 ### Añadido
+
 - Monorepo Bun (`apps/api`, `apps/web`, `apps/desktop`, `packages/*`), identificador Tauri `com.yafeldev.hivemonitor`.
 - Servidor Hono + Better Auth (organizaciones, roles por permisos, OAuth Twitch/Google, bearer para Tauri), PostgreSQL con RLS por tenant,
   migraciones versionadas, `audit_log` de solo inserción.
@@ -20,5 +21,6 @@ Primera versión.
 - Binario único con frontend y migraciones embebidos; Containerfile, compose, Quadlet, systemd, backup/restore; CI de GitHub Actions; documentación y ADRs.
 
 ### Limitaciones conocidas
+
 - Login social en Tauri sin retorno por deep link; sin verificación de correo ni recuperación de contraseña; roles personalizados solo como modelo.
 - Despliegue en contenedores, CI, `tauri build` y Android escritos pero no ejecutados en el entorno de desarrollo.
