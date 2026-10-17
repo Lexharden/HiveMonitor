@@ -22,7 +22,8 @@ export interface AuthDeps {
 export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) {
   const mail = createMailer(config, logger);
   const actorId = () => actorStore.getStore()?.userId ?? null;
-  const log = (e: Parameters<typeof auditAdmin>[1]) => auditAdmin(adminDb, e).catch((err) => logger.error({ err }, "no se pudo registrar la auditoría"));
+  const log = (e: Parameters<typeof auditAdmin>[1]) =>
+    auditAdmin(adminDb, e).catch((err) => logger.error({ err }, "no se pudo registrar la auditoría"));
   const social: Record<string, { clientId: string; clientSecret: string }> = {};
   if (config.TWITCH_CLIENT_ID && config.TWITCH_CLIENT_SECRET) {
     social.twitch = { clientId: config.TWITCH_CLIENT_ID, clientSecret: config.TWITCH_CLIENT_SECRET };
@@ -97,22 +98,58 @@ export function createAuth({ config, adminDb, logger, onInvitation }: AuthDeps) 
             logger.warn({ org: org.id, name: org.name, actor: actorId() }, "organización eliminada");
           },
           afterUpdateMemberRole: async ({ member, previousRole, user, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: null, action: "member.role_change", target: member.id, meta: { member: user.email, from: previousRole, to: member.role } });
+            await log({
+              tenantId: org.id,
+              actorUserId: null,
+              action: "member.role_change",
+              target: member.id,
+              meta: { member: user.email, from: previousRole, to: member.role },
+            });
           },
           afterRemoveMember: async ({ member, user, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: null, action: "member.remove", target: member.id, meta: { member: user.email, role: member.role } });
+            await log({
+              tenantId: org.id,
+              actorUserId: null,
+              action: "member.remove",
+              target: member.id,
+              meta: { member: user.email, role: member.role },
+            });
           },
           afterAddMember: async ({ member, user, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: null, action: "member.add", target: member.id, meta: { member: user.email, role: member.role } });
+            await log({
+              tenantId: org.id,
+              actorUserId: null,
+              action: "member.add",
+              target: member.id,
+              meta: { member: user.email, role: member.role },
+            });
           },
           afterCreateInvitation: async ({ invitation, inviter, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: inviter.id, action: "invitation.create", target: invitation.id, meta: { email: invitation.email, role: invitation.role } });
+            await log({
+              tenantId: org.id,
+              actorUserId: inviter.id,
+              action: "invitation.create",
+              target: invitation.id,
+              meta: { email: invitation.email, role: invitation.role },
+            });
           },
           afterCancelInvitation: async ({ invitation, cancelledBy, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: cancelledBy.id, action: "invitation.cancel", target: invitation.id, meta: { email: invitation.email } });
+            await log({
+              tenantId: org.id,
+              actorUserId: cancelledBy.id,
+              action: "invitation.cancel",
+              target: invitation.id,
+              meta: { email: invitation.email },
+            });
           },
           afterAcceptInvitation: async ({ invitation, user, organization: org }) => {
-            await log({ tenantId: org.id, actorUserId: user.id, action: "invitation.accept", target: invitation.id, meta: { email: user.email, role: invitation.role } });
+            await log({
+              tenantId: org.id,
+              actorUserId: user.id,
+              action: "invitation.accept",
+              target: invitation.id,
+              meta: { email: user.email, role: invitation.role },
+            });
           },
         },
         sendInvitationEmail: async (data) => {

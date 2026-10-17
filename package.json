@@ -4,20 +4,37 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "workspaces": ["apps/*", "packages/*", "scripts"],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "scripts"
+  ],
   "scripts": {
     "dev:web": "bun --filter @hivemonitor/web dev",
     "dev:api": "bun --filter @hivemonitor/api dev",
     "dev:desktop": "bun --filter @hivemonitor/desktop tauri dev",
     "build:web": "bun --filter @hivemonitor/web build",
     "check": "bun --filter '*' check",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "bun --filter \"*\" check",
+    "build:binary": "bun scripts/build-binary.ts",
+    "ci": "bun run lint && bun run format:check && bun run typecheck && bun test"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bun": "^1.4.3",
     "eslint": "^10.13.0",
+    "eslint-plugin-svelte": "^3.23.1",
+    "globals": "^17.13.0",
     "postgres": "^3.4.9",
     "prettier": "^3.9.10",
-    "typescript": "^7.0.2"
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte-eslint-parser": "^1.9.0",
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8.71.2"
   }
 }

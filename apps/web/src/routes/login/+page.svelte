@@ -62,8 +62,18 @@
       <div>
         <label class="mb-1 block text-sm font-medium" for="server">{t("auth.server")}</label>
         <div class="flex gap-2">
-          <input id="server" class="input" type="url" required placeholder="https://hivemonitor.ejemplo.com" bind:value={server} oninput={() => (serverState = "idle")} />
-          <button type="button" class="btn shrink-0" onclick={testServer} disabled={!server || serverState === "testing"}>{t("auth.serverTest")}</button>
+          <input
+            id="server"
+            class="input"
+            type="url"
+            required
+            placeholder="https://hivemonitor.ejemplo.com"
+            bind:value={server}
+            oninput={() => (serverState = "idle")}
+          />
+          <button type="button" class="btn shrink-0" onclick={testServer} disabled={!server || serverState === "testing"}
+            >{t("auth.serverTest")}</button
+          >
         </div>
         <p class="mt-1 text-xs {serverState === 'ok' ? 'text-good' : serverState === 'fail' ? 'text-bad' : 'text-fg-3'}" role="status">
           {serverState === "ok" ? t("auth.serverOk") : serverState === "fail" ? t("auth.serverFail") : t("auth.serverHint")}
@@ -83,7 +93,9 @@
   </form>
 
   {#if !app.native}
-    <div class="my-4 flex items-center gap-3 text-xs text-fg-3"><span class="h-px flex-1 bg-border"></span>o<span class="h-px flex-1 bg-border"></span></div>
+    <div class="my-4 flex items-center gap-3 text-xs text-fg-3">
+      <span class="h-px flex-1 bg-border"></span>o<span class="h-px flex-1 bg-border"></span>
+    </div>
     <div class="grid gap-2">
       <button class="btn" onclick={() => social("twitch")}>{t("auth.withTwitch")}</button>
       <button class="btn" onclick={() => social("google")}>{t("auth.withGoogle")}</button>

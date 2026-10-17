@@ -77,7 +77,8 @@
   const lineHistory = $derived.by(() => {
     const h: Record<string, { t: number; v: number }[]> = {};
     if (!overview || (metric !== "peak" && metric !== "avg")) return h;
-    for (const s of overview.series) (h[s.platform] ??= []).push({ t: new Date(s.bucket).getTime(), v: metric === "peak" ? s.viewersPeak : Math.round(s.viewersAvg) });
+    for (const s of overview.series)
+      (h[s.platform] ??= []).push({ t: new Date(s.bucket).getTime(), v: metric === "peak" ? s.viewersPeak : Math.round(s.viewersAvg) });
     return h;
   });
 
@@ -90,7 +91,9 @@
     }));
   });
   const metricLabel = $derived(t(METRICS.find((m) => m.id === metric)!.label));
-  const range = $derived(overview ? { now: Date.parse(overview.to), ms: Date.parse(overview.to) - Date.parse(overview.from) } : { now: Date.now(), ms: 1 });
+  const range = $derived(
+    overview ? { now: Date.parse(overview.to), ms: Date.parse(overview.to) - Date.parse(overview.from) } : { now: Date.now(), ms: 1 },
+  );
 </script>
 
 <svelte:head><title>{t("hist.title")} · HiveMonitor</title></svelte:head>
@@ -100,7 +103,11 @@
   <div class="flex flex-wrap items-center gap-2">
     <div class="inline-flex rounded-lg border border-border p-0.5" role="group" aria-label="Periodo">
       {#each PERIODS as p (p.d)}
-        <button class="rounded-md px-3 py-1 text-xs font-medium {days === p.d ? 'bg-surface-2 text-fg' : 'text-fg-3'}" aria-pressed={days === p.d} onclick={() => (days = p.d)}>{t(p.label)}</button>
+        <button
+          class="rounded-md px-3 py-1 text-xs font-medium {days === p.d ? 'bg-surface-2 text-fg' : 'text-fg-3'}"
+          aria-pressed={days === p.d}
+          onclick={() => (days = p.d)}>{t(p.label)}</button
+        >
       {/each}
     </div>
     <select class="input !w-auto" bind:value={platform} aria-label={t("int.platform")}>
@@ -126,7 +133,9 @@
           {#if c.delta === null}
             <span>{t("hist.vsPrev")}: –</span>
           {:else}
-            <span class={c.delta > 0 ? "text-good" : c.delta < 0 ? "text-bad" : ""}>{c.delta > 0 ? "▲" : c.delta < 0 ? "▼" : "■"} {Math.abs(c.delta)}%</span>
+            <span class={c.delta > 0 ? "text-good" : c.delta < 0 ? "text-bad" : ""}
+              >{c.delta > 0 ? "▲" : c.delta < 0 ? "▼" : "■"} {Math.abs(c.delta)}%</span
+            >
             {t("hist.vsPrev")}
           {/if}
         </p>
@@ -137,13 +146,32 @@
   <section class="card mb-6 p-4">
     <div class="mb-3 flex flex-wrap gap-2" role="group" aria-label="Métrica">
       {#each METRICS as m (m.id)}
-        <button class="rounded-full border px-3 py-1 text-xs font-medium {metric === m.id ? 'border-accent bg-accent/15 text-fg' : 'border-border text-fg-3'}" aria-pressed={metric === m.id} onclick={() => (metric = m.id)}>{t(m.label)}</button>
+        <button
+          class="rounded-full border px-3 py-1 text-xs font-medium {metric === m.id
+            ? 'border-accent bg-accent/15 text-fg'
+            : 'border-border text-fg-3'}"
+          aria-pressed={metric === m.id}
+          onclick={() => (metric = m.id)}>{t(m.label)}</button
+        >
       {/each}
     </div>
     {#if metric === "peak" || metric === "avg"}
-      <ViewersChart history={lineHistory} now={range.now} rangeMs={range.ms} axisFormat={axisFmt} tipFormat={(tm) => (hourly ? fmtDateTime(tm) : fmtDate(tm))} title={metricLabel} />
+      <ViewersChart
+        history={lineHistory}
+        now={range.now}
+        rangeMs={range.ms}
+        axisFormat={axisFmt}
+        tipFormat={(tm) => (hourly ? fmtDateTime(tm) : fmtDate(tm))}
+        title={metricLabel}
+      />
     {:else}
-      <BarChart data={bars} label={metricLabel} axisFormat={axisFmt} title={metricLabel} format={metric === "donations" ? (n) => fmtUsd(n * 100) : undefined} />
+      <BarChart
+        data={bars}
+        label={metricLabel}
+        axisFormat={axisFmt}
+        title={metricLabel}
+        format={metric === "donations" ? (n) => fmtUsd(n * 100) : undefined}
+      />
     {/if}
   </section>
 
@@ -167,7 +195,11 @@
             <tbody>
               {#each sessions as s (s.id)}
                 <tr class="border-t border-border hover:bg-surface-2">
-                  <td class="px-4 py-2 whitespace-nowrap"><a class="text-accent hover:underline" href="/history/{s.id}">{fmtDateTime(s.startedAt)}</a>{#if s.live}<span class="ml-2 text-xs text-good">● {t("hist.live")}</span>{/if}</td>
+                  <td class="px-4 py-2 whitespace-nowrap"
+                    ><a class="text-accent hover:underline" href="/history/{s.id}">{fmtDateTime(s.startedAt)}</a>{#if s.live}<span
+                        class="ml-2 text-xs text-good">● {t("hist.live")}</span
+                      >{/if}</td
+                  >
                   <td class="px-2 py-2"><span class="mr-2"><PlatformBadge platform={s.platform} compact /></span>{s.channelId}</td>
                   <td class="px-2 py-2 tabular-nums">{fmtDuration(s.durationSec)}</td>
                   <td class="px-2 py-2 text-right tabular-nums">{fmtNumber(s.peakViewers)}</td>
@@ -177,7 +209,9 @@
             </tbody>
           </table>
         </div>
-        {#if nextBefore}<div class="border-t border-border p-3 text-center"><button class="btn" onclick={more}>{t("hist.loadMore")}</button></div>{/if}
+        {#if nextBefore}<div class="border-t border-border p-3 text-center">
+            <button class="btn" onclick={more}>{t("hist.loadMore")}</button>
+          </div>{/if}
       {/if}
     </section>
 
@@ -191,7 +225,9 @@
             <li class="flex items-center gap-3 px-4 py-2.5 text-sm">
               <span class="w-5 text-xs text-fg-3 tabular-nums">{i + 1}</span>
               <span class="min-w-0 flex-1 truncate font-medium">{d.name}</span>
-              <span class="text-right tabular-nums">{fmtMoney(d.amountMinor, d.currency)}<span class="block text-xs text-fg-3">≈ {fmtUsd(d.usdMinorEstimate)}</span></span>
+              <span class="text-right tabular-nums"
+                >{fmtMoney(d.amountMinor, d.currency)}<span class="block text-xs text-fg-3">≈ {fmtUsd(d.usdMinorEstimate)}</span></span
+              >
             </li>
           {/each}
         </ol>

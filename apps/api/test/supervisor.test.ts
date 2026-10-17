@@ -34,7 +34,10 @@ describe("backoff", () => {
   });
 });
 
-function setup(factoryFor: (spec: ConnectionSpec) => AdapterFactory | undefined, extra: Partial<ConstructorParameters<typeof Supervisor>[0]> = {}) {
+function setup(
+  factoryFor: (spec: ConnectionSpec) => AdapterFactory | undefined,
+  extra: Partial<ConstructorParameters<typeof Supervisor>[0]> = {},
+) {
   const events: NormalizedEvent[] = [];
   const closed: string[] = [];
   const statuses: { id: string; status: string }[] = [];
@@ -57,7 +60,12 @@ function setup(factoryFor: (spec: ConnectionSpec) => AdapterFactory | undefined,
   return { sup, events, closed, statuses, bus };
 }
 
-const spec = (id: string, tenantId = "t1", platform: Platform = "tiktok"): ConnectionSpec => ({ id, tenantId, platform, channelId: `ch_${id}` });
+const spec = (id: string, tenantId = "t1", platform: Platform = "tiktok"): ConnectionSpec => ({
+  id,
+  tenantId,
+  platform,
+  channelId: `ch_${id}`,
+});
 
 function chat(s: ConnectionSpec, over: Partial<NormalizedEvent> = {}): NormalizedEvent {
   return {
@@ -121,7 +129,14 @@ describe("supervisor", () => {
   test("una excepción síncrona del adaptador (factory) tampoco tumba al supervisor", async () => {
     const { sup } = setup((s) => (ctx, h) => {
       if (s.id === "x") throw new Error("factory rota");
-      return { platform: ctx.platform, status: () => "live", async connect() { h.onStatus({ status: "live", at: new Date() }); }, async disconnect() {} };
+      return {
+        platform: ctx.platform,
+        status: () => "live",
+        async connect() {
+          h.onStatus({ status: "live", at: new Date() });
+        },
+        async disconnect() {},
+      };
     });
     await sup.start(spec("x"));
     await sup.start(spec("y"));
@@ -265,7 +280,14 @@ describe("supervisor", () => {
     const handlersByAttempt: AdapterHandlers[] = [];
     const { sup, events } = setup(() => (ctx, h) => {
       handlersByAttempt.push(h);
-      return { platform: ctx.platform, status: () => "live", async connect() { h.onStatus({ status: "live", at: new Date() }); }, async disconnect() {} };
+      return {
+        platform: ctx.platform,
+        status: () => "live",
+        async connect() {
+          h.onStatus({ status: "live", at: new Date() });
+        },
+        async disconnect() {},
+      };
     });
     await sup.start(spec("g"));
     await until(() => sup.get("g")?.status === "live");
@@ -283,7 +305,14 @@ describe("supervisor", () => {
   });
 
   test("publica cambios de estado en el bus del tenant", async () => {
-    const { sup, bus } = setup(() => (ctx, h) => ({ platform: ctx.platform, status: () => "live", async connect() { h.onStatus({ status: "live", at: new Date() } satisfies StatusChange); }, async disconnect() {} }));
+    const { sup, bus } = setup(() => (ctx, h) => ({
+      platform: ctx.platform,
+      status: () => "live",
+      async connect() {
+        h.onStatus({ status: "live", at: new Date() } satisfies StatusChange);
+      },
+      async disconnect() {},
+    }));
     const seen: string[] = [];
     bus.subscribe("t1", (m) => m.kind === "status" && seen.push(m.change.status));
     const other: string[] = [];

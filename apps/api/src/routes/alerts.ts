@@ -15,7 +15,15 @@ const base = {
   webhookUrl: z.string().max(300).nullable().optional(),
 };
 const createSchema = z.object({ type: z.enum(ALERT_TYPES), params: z.record(z.string(), z.unknown()).default({}), ...base });
-const patchSchema = z.object({ params: z.record(z.string(), z.unknown()).optional(), enabled: z.boolean().optional(), name: base.name.optional(), channels: base.channels.optional(), webhookUrl: base.webhookUrl }).strict();
+const patchSchema = z
+  .object({
+    params: z.record(z.string(), z.unknown()).optional(),
+    enabled: z.boolean().optional(),
+    name: base.name.optional(),
+    channels: base.channels.optional(),
+    webhookUrl: base.webhookUrl,
+  })
+  .strict();
 
 const publicRule = (r: typeof schema.alertRule.$inferSelect) => ({
   id: r.id,
@@ -46,7 +54,8 @@ export function alertRoutes(deps: AppDeps) {
     const b = body.data;
     const params = parseParams(b.type, b.params);
     if (!params) return c.json({ error: "invalid_params" }, 400);
-    if (b.channels.includes("webhook") && !(b.webhookUrl && isAllowedWebhookUrl(b.webhookUrl))) return c.json({ error: "invalid_webhook" }, 400);
+    if (b.channels.includes("webhook") && !(b.webhookUrl && isAllowedWebhookUrl(b.webhookUrl)))
+      return c.json({ error: "invalid_webhook" }, 400);
 
     const [{ n } = { n: 0 }] = await withTenant(deps.appDb, t.tenantId, (tx) => tx.select({ n: count() }).from(schema.alertRule));
     if (n >= MAX_RULES) return c.json({ error: "rule_limit_reached", max: MAX_RULES }, 409);
@@ -64,7 +73,14 @@ export function alertRoutes(deps: AppDeps) {
       }),
     );
     deps.alerts.invalidate(t.tenantId);
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "alert.create", target: id, meta: { type: b.type, channels: b.channels }, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "alert.create",
+      target: id,
+      meta: { type: b.type, channels: b.channels },
+      ip: c.get("ip"),
+    });
     return c.json({ id }, 201);
   });
 
@@ -92,21 +108,31 @@ export function alertRoutes(deps: AppDeps) {
       else if (!isAllowedWebhookUrl(b.webhookUrl)) return c.json({ error: "invalid_webhook" }, 400);
       else set.webhookUrlEnc = deps.encryptor.encrypt(b.webhookUrl);
     }
-    if (channels.includes("webhook") && (set.webhookUrlEnc === undefined ? cur.webhookUrlEnc : set.webhookUrlEnc) === null) return c.json({ error: "invalid_webhook" }, 400);
+    if (channels.includes("webhook") && (set.webhookUrlEnc === undefined ? cur.webhookUrlEnc : set.webhookUrlEnc) === null)
+      return c.json({ error: "invalid_webhook" }, 400);
     if (!channels.includes("webhook")) set.webhookUrlEnc = null;
 
     if (Object.keys(set).length) {
       await withTenant(deps.appDb, t.tenantId, (tx) => tx.update(schema.alertRule).set(set).where(eq(schema.alertRule.id, id)));
     }
     deps.alerts.invalidate(t.tenantId);
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "alert.update", target: id, meta: { fields: Object.keys(b) }, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "alert.update",
+      target: id,
+      meta: { fields: Object.keys(b) },
+      ip: c.get("ip"),
+    });
     return c.json({ ok: true });
   });
 
   r.delete("/alerts/rules/:id", manage, async (c) => {
     const t = c.get("tenant");
     const id = c.req.param("id");
-    const rows = await withTenant(deps.appDb, t.tenantId, (tx) => tx.delete(schema.alertRule).where(eq(schema.alertRule.id, id)).returning({ id: schema.alertRule.id }));
+    const rows = await withTenant(deps.appDb, t.tenantId, (tx) =>
+      tx.delete(schema.alertRule).where(eq(schema.alertRule.id, id)).returning({ id: schema.alertRule.id }),
+    );
     if (!rows.length) return c.json({ error: "not_found" }, 404);
     deps.alerts.invalidate(t.tenantId);
     await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "alert.delete", target: id, ip: c.get("ip") });
@@ -116,9 +142,19 @@ export function alertRoutes(deps: AppDeps) {
   /** Dispara una alerta de prueba por todos los canales de la regla. */
   r.post("/alerts/rules/:id/test", manage, async (c) => {
     const t = c.get("tenant");
-    const [rule] = await withTenant(deps.appDb, t.tenantId, (tx) => tx.select().from(schema.alertRule).where(eq(schema.alertRule.id, c.req.param("id"))));
+    const [rule] = await withTenant(deps.appDb, t.tenantId, (tx) =>
+      tx
+        .select()
+        .from(schema.alertRule)
+        .where(eq(schema.alertRule.id, c.req.param("id"))),
+    );
     if (!rule) return c.json({ error: "not_found" }, 404);
-    const alert = await deps.alerts.fire(t.tenantId, { id: rule.id, type: rule.type as never, name: rule.name, channels: rule.channels, webhookUrlEnc: rule.webhookUrlEnc }, "Alerta de prueba de HiveMonitor", { test: true });
+    const alert = await deps.alerts.fire(
+      t.tenantId,
+      { id: rule.id, type: rule.type as never, name: rule.name, channels: rule.channels, webhookUrlEnc: rule.webhookUrlEnc },
+      "Alerta de prueba de HiveMonitor",
+      { test: true },
+    );
     return c.json({ alert });
   });
 
@@ -126,7 +162,9 @@ export function alertRoutes(deps: AppDeps) {
   r.get("/alerts/events", requireTenant(deps, "stream.view"), async (c) => {
     const { tenantId } = c.get("tenant");
     const limit = Math.min(Number(c.req.query("limit") ?? 30) || 30, 100);
-    const rows = await withTenant(deps.appDb, tenantId, (tx) => tx.select().from(schema.alertEvent).orderBy(desc(schema.alertEvent.firedAt)).limit(limit));
+    const rows = await withTenant(deps.appDb, tenantId, (tx) =>
+      tx.select().from(schema.alertEvent).orderBy(desc(schema.alertEvent.firedAt)).limit(limit),
+    );
     return c.json({ events: rows.map((e) => ({ id: e.id, ruleId: e.ruleId, firedAt: e.firedAt, ...(e.data as object) })) });
   });
 

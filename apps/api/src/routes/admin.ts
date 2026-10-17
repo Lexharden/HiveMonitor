@@ -49,7 +49,9 @@ export function adminRoutes(deps: AppDeps) {
       connections: deps.ingest.supervisor.stats(),
       subscribers: (deps.bus as { subscriberCount?: () => number }).subscriberCount?.() ?? null,
       errors: [...recentErrors].reverse().slice(0, 30),
-      connectionList: deps.ingest.supervisor.list().map((x) => ({ id: x.id, tenantId: x.tenantId, platform: x.platform, status: x.status, detail: x.detail, attempts: x.attempts })),
+      connectionList: deps.ingest.supervisor
+        .list()
+        .map((x) => ({ id: x.id, tenantId: x.tenantId, platform: x.platform, status: x.status, detail: x.detail, attempts: x.attempts })),
     });
   });
 
@@ -57,10 +59,7 @@ export function adminRoutes(deps: AppDeps) {
     const id = c.req.param("id");
     const body = patchSchema.safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid_body", issues: body.error.issues }, 400);
-    const [org] = await deps.adminDb
-      .select({ id: schema.organization.id })
-      .from(schema.organization)
-      .where(eq(schema.organization.id, id));
+    const [org] = await deps.adminDb.select({ id: schema.organization.id }).from(schema.organization).where(eq(schema.organization.id, id));
     if (!org) return c.json({ error: "not_found" }, 404);
 
     await deps.adminDb

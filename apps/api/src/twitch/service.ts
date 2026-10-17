@@ -1,10 +1,5 @@
 import { createHmac } from "node:crypto";
-import {
-  Helix,
-  createTwitchAdapterFactory,
-  createWebSocketTransport,
-  type EventSubTransport,
-} from "@hivemonitor/adapters";
+import { Helix, createTwitchAdapterFactory, createWebSocketTransport, type EventSubTransport } from "@hivemonitor/adapters";
 import type { AdapterFactory } from "@hivemonitor/core";
 import type { Database } from "@hivemonitor/db";
 import type { Config } from "../config.ts";

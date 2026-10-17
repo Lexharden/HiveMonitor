@@ -59,7 +59,9 @@
         </div>
         <p class="mt-2 truncate font-medium">{c.channelId}</p>
         {#if ch}
-          <p class="mt-1 text-sm text-fg-2 tabular-nums">{fmtNumber(ch.viewers)} · {fmtDuration((live.now - new Date(ch.startedAt).getTime()) / 1000)}</p>
+          <p class="mt-1 text-sm text-fg-2 tabular-nums">
+            {fmtNumber(ch.viewers)} · {fmtDuration((live.now - new Date(ch.startedAt).getTime()) / 1000)}
+          </p>
         {:else if (c.status === "error" || c.status === "rate_limited" || c.status === "offline") && retryIn(c.nextRetryAt) !== null}
           <p class="mt-1 text-xs text-fg-3">{c.detail ? `${c.detail} · ` : ""}{t("status.retryIn", { s: retryIn(c.nextRetryAt)! })}</p>
         {:else}
@@ -78,10 +80,13 @@
           <div class="card p-4">
             <div class="flex items-center justify-between">
               <span class="font-medium">{s.source}</span>
-              {#if age > STALE_S}<span class="text-xs font-medium text-bad">✕ {t("hb.noSignal")}</span>{:else}<span class="text-xs font-medium text-good">● {t("hb.ago", { s: age })}</span>{/if}
+              {#if age > STALE_S}<span class="text-xs font-medium text-bad">✕ {t("hb.noSignal")}</span>{:else}<span
+                  class="text-xs font-medium text-good">● {t("hb.ago", { s: age })}</span
+                >{/if}
             </div>
             <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
-              {#each shown(s.metrics) as [k, v] (k)}<dt class="truncate text-fg-3">{k}</dt><dd class="truncate text-right tabular-nums">{String(v)}</dd>{/each}
+              {#each shown(s.metrics) as [k, v] (k)}<dt class="truncate text-fg-3">{k}</dt>
+                <dd class="truncate text-right tabular-nums">{String(v)}</dd>{/each}
             </dl>
           </div>
         {/each}
@@ -108,7 +113,11 @@
       <h2 class="font-medium">{t("dash.viewersOverTime")}</h2>
       <div class="inline-flex rounded-lg border border-border p-0.5" role="group" aria-label="Rango">
         {#each RANGES as r (r.ms)}
-          <button class="rounded-md px-3 py-1 text-xs font-medium {range === r.ms ? 'bg-surface-2 text-fg' : 'text-fg-3'}" aria-pressed={range === r.ms} onclick={() => (range = r.ms)}>
+          <button
+            class="rounded-md px-3 py-1 text-xs font-medium {range === r.ms ? 'bg-surface-2 text-fg' : 'text-fg-3'}"
+            aria-pressed={range === r.ms}
+            onclick={() => (range = r.ms)}
+          >
             {t(r.label)}
           </button>
         {/each}

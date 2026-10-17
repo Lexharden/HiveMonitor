@@ -20,7 +20,18 @@ const exe = candidates.find((p) => Bun.file(p).size > 0);
 if (!exe) throw new Error("No se encontró Edge/Chrome");
 
 const port = 9333;
-const proc = spawn(exe, [`--remote-debugging-port=${port}`, "--headless=new", "--disable-gpu", `--user-data-dir=${join(process.cwd(), out, ".profile")}`, "--window-size=1280,900", "about:blank"], { stdio: "ignore" });
+const proc = spawn(
+  exe,
+  [
+    `--remote-debugging-port=${port}`,
+    "--headless=new",
+    "--disable-gpu",
+    `--user-data-dir=${join(process.cwd(), out, ".profile")}`,
+    "--window-size=1280,900",
+    "about:blank",
+  ],
+  { stdio: "ignore" },
+);
 
 async function waitJson(url: string) {
   for (let i = 0; i < 60; i++) {
@@ -41,8 +52,10 @@ const logs: string[] = [];
 ws.onmessage = (e) => {
   const m = JSON.parse(String(e.data));
   if (m.id && pending.has(m.id)) pending.get(m.id)!(m);
-  if (m.method === "Runtime.consoleAPICalled") logs.push(`${m.params.type}: ${m.params.args.map((a: any) => a.value ?? a.description).join(" ")}`);
-  if (m.method === "Runtime.exceptionThrown") logs.push(`EXC: ${m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text}`);
+  if (m.method === "Runtime.consoleAPICalled")
+    logs.push(`${m.params.type}: ${m.params.args.map((a: any) => a.value ?? a.description).join(" ")}`);
+  if (m.method === "Runtime.exceptionThrown")
+    logs.push(`EXC: ${m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text}`);
 };
 const send = (method: string, params: object = {}) =>
   new Promise<any>((resolve) => {
@@ -72,13 +85,22 @@ await shot("01-login");
 
 const email = `demo${Date.now()}@test.dev`;
 await goto("/register");
-const reg = await evalJs(`fetch('/api/auth/sign-up/email',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Demo',email:'${email}',password:'correct-horse-battery'})}).then(r=>r.status)`);
+const reg = await evalJs(
+  `fetch('/api/auth/sign-up/email',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Demo',email:'${email}',password:'correct-horse-battery'})}).then(r=>r.status)`,
+);
 console.log("registro:", reg);
 if (process.env.DATABASE_URL) Bun.spawnSync(["bun", join(import.meta.dir, "make-superadmin.ts"), email], { env: process.env });
-const org = await evalJs(`fetch('/api/auth/organization/create',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Demo Org',slug:'demo-${Date.now()}'})}).then(r=>r.json()).then(j=>j.id)`);
+const org = await evalJs(
+  `fetch('/api/auth/organization/create',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Demo Org',slug:'demo-${Date.now()}'})}).then(r=>r.json()).then(j=>j.id)`,
+);
 console.log("org:", org);
-for (const [platform, ch, seed] of [["tiktok", "streamer_tt", 3], ["twitch", "streamer_tw", 9]] as const) {
-  await evalJs(`fetch('/api/t/${org}/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platform:'${platform}',channelId:'${ch}',config:{mode:'mock',intervalMs:400,seed:${seed}}})}).then(r=>r.status)`);
+for (const [platform, ch, seed] of [
+  ["tiktok", "streamer_tt", 3],
+  ["twitch", "streamer_tw", 9],
+] as const) {
+  await evalJs(
+    `fetch('/api/t/${org}/connections',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platform:'${platform}',channelId:'${ch}',config:{mode:'mock',intervalMs:400,seed:${seed}}})}).then(r=>r.status)`,
+  );
 }
 
 await goto("/", 9000);

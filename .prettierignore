@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.svelte-kit
+.dev-data
+.shots
+target
+gen
+bun.lock
+apps/api/src/embedded.generated.ts
+*.sql
+docs/**/*.md

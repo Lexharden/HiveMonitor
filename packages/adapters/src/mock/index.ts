@@ -61,14 +61,26 @@ export function sampleSession(): RecordedEvent[] {
     viewers += i % 5 === 0 ? -3 : 4;
     out.push({ offsetMs: t, type: "viewer_count", payload: { viewers } });
     const name = NAMES[i % NAMES.length]!;
-    out.push({ offsetMs: t + 300, type: "chat", actor: { id: `u_${name}`, name }, payload: { message: MESSAGES[i % MESSAGES.length]!, badges: [] } });
+    out.push({
+      offsetMs: t + 300,
+      type: "chat",
+      actor: { id: `u_${name}`, name },
+      payload: { message: MESSAGES[i % MESSAGES.length]!, badges: [] },
+    });
     if (i % 6 === 0) out.push({ offsetMs: t + 600, type: "follow", actor: { id: `u_${name}`, name }, payload: {} });
     if (i % 8 === 0) {
       out.push({
         offsetMs: t + 900,
         type: "donation",
         actor: { id: `u_${name}`, name },
-        payload: { kind: "gift", giftName: GIFTS[i % GIFTS.length], count: 1, amountMinor: 100 * i, currency: "TIKTOK_COIN", usdMinorEstimate: i * 1 },
+        payload: {
+          kind: "gift",
+          giftName: GIFTS[i % GIFTS.length],
+          count: 1,
+          amountMinor: 100 * i,
+          currency: "TIKTOK_COIN",
+          usdMinorEstimate: i * 1,
+        },
       });
     }
   }
@@ -166,15 +178,18 @@ class MockAdapter implements PlatformAdapter {
         }, e.offsetMs / speed);
         this.timers.add(t);
       }
-      const end = setTimeout(() => {
-        this.timers.delete(end);
-        if (!this.live) return;
-        if (this.cfg.loop) play();
-        else {
-          this.live = false;
-          this.setStatus("offline", "fin de la grabación");
-        }
-      }, last / speed + 5);
+      const end = setTimeout(
+        () => {
+          this.timers.delete(end);
+          if (!this.live) return;
+          if (this.cfg.loop) play();
+          else {
+            this.live = false;
+            this.setStatus("offline", "fin de la grabación");
+          }
+        },
+        last / speed + 5,
+      );
       this.timers.add(end);
     };
     play();
@@ -196,7 +211,18 @@ class MockAdapter implements PlatformAdapter {
     else if (r < 0.88) this.emit("follow", {}, actor);
     else if (r < 0.95) {
       const amountMinor = 100 * (1 + Math.floor(this.rand() * 20));
-      this.emit("donation", { kind: "gift", giftName: GIFTS[Math.floor(this.rand() * GIFTS.length)], count: 1, amountMinor, currency: "TIKTOK_COIN", usdMinorEstimate: Math.round(amountMinor * 0.5) }, actor);
+      this.emit(
+        "donation",
+        {
+          kind: "gift",
+          giftName: GIFTS[Math.floor(this.rand() * GIFTS.length)],
+          count: 1,
+          amountMinor,
+          currency: "TIKTOK_COIN",
+          usdMinorEstimate: Math.round(amountMinor * 0.5),
+        },
+        actor,
+      );
     } else this.emit("share", {}, actor);
   }
 }

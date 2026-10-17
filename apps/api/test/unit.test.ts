@@ -22,7 +22,12 @@ describe("cifrado AES-256-GCM", () => {
   });
   test("rotación: datos viejos se leen con su versión de clave", () => {
     const old = enc.encrypt("viejo");
-    const rotated = createEncryptor(new Map([[1, k1], [2, randomBytes(32)]]));
+    const rotated = createEncryptor(
+      new Map([
+        [1, k1],
+        [2, randomBytes(32)],
+      ]),
+    );
     expect(rotated.keyVersion).toBe(2);
     expect(rotated.decrypt(old)).toBe("viejo");
   });
@@ -47,13 +52,16 @@ describe("IP de cliente y proxies de confianza", () => {
 });
 
 describe("bus en proceso", () => {
-  const msg = (tenantId: string) => ({ kind: "status", tenantId, platform: "tiktok", channelId: "c", change: { status: "live", at: new Date() } }) as const;
+  const msg = (tenantId: string) =>
+    ({ kind: "status", tenantId, platform: "tiktok", channelId: "c", change: { status: "live", at: new Date() } }) as const;
   test("entrega solo al tenant suscrito y un handler roto no afecta a otros", () => {
     const errors: unknown[] = [];
     const bus = new InProcessBus((e) => errors.push(e));
     const a: string[] = [];
     const b: string[] = [];
-    bus.subscribe("A", () => { throw new Error("boom"); });
+    bus.subscribe("A", () => {
+      throw new Error("boom");
+    });
     bus.subscribe("A", (m) => a.push(m.tenantId));
     bus.subscribe("B", (m) => b.push(m.tenantId));
     bus.publish(msg("A"));

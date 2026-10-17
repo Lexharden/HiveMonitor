@@ -39,7 +39,17 @@ export class Aggregator {
     const key = `${e.tenantId}|${e.platform}|${hour}`;
     let d = this.deltas.get(key);
     if (!d) {
-      d = { tenantId: e.tenantId, platform: e.platform, hour, peak: 0, viewerSum: 0, viewerSamples: 0, donationsMinor: 0, messages: 0, followers: 0 };
+      d = {
+        tenantId: e.tenantId,
+        platform: e.platform,
+        hour,
+        peak: 0,
+        viewerSum: 0,
+        viewerSamples: 0,
+        donationsMinor: 0,
+        messages: 0,
+        followers: 0,
+      };
       this.deltas.set(key, d);
     }
     switch (e.type) {
@@ -97,7 +107,18 @@ export function toDays(hours: HourDelta[]): DayDelta[] {
     const day = new Date(h.hour).toISOString().slice(0, 10);
     const key = `${h.tenantId}|${h.platform}|${day}`;
     const d = map.get(key);
-    if (!d) map.set(key, { tenantId: h.tenantId, platform: h.platform, day, peak: h.peak, viewerSum: h.viewerSum, viewerSamples: h.viewerSamples, donationsMinor: h.donationsMinor, messages: h.messages, followers: h.followers });
+    if (!d)
+      map.set(key, {
+        tenantId: h.tenantId,
+        platform: h.platform,
+        day,
+        peak: h.peak,
+        viewerSum: h.viewerSum,
+        viewerSamples: h.viewerSamples,
+        donationsMinor: h.donationsMinor,
+        messages: h.messages,
+        followers: h.followers,
+      });
     else {
       d.peak = Math.max(d.peak, h.peak);
       d.viewerSum += h.viewerSum;

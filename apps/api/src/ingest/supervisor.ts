@@ -67,7 +67,8 @@ class Semaphore {
       if (released) return;
       released = true;
       const next = this.waiters.shift();
-      if (next) next(); // el cupo pasa directamente al siguiente
+      if (next)
+        next(); // el cupo pasa directamente al siguiente
       else this.active--;
     };
   }
@@ -143,7 +144,13 @@ class ManagedConnection {
     this.detail = detail;
     if (changed) this.since = new Date();
     const change: StatusChange = { status, at: new Date(), detail };
-    void this.sup.o.bus.publish({ kind: "status", tenantId: this.spec.tenantId, platform: this.spec.platform, channelId: this.spec.channelId, change });
+    void this.sup.o.bus.publish({
+      kind: "status",
+      tenantId: this.spec.tenantId,
+      platform: this.spec.platform,
+      channelId: this.spec.channelId,
+      change,
+    });
     if (changed) {
       this.sup.notifyStatus(this.spec, status, detail);
       Promise.resolve(this.sup.o.onStatusChange?.(this.spec, status, detail)).catch((err) =>
@@ -186,8 +193,7 @@ class ManagedConnection {
     if (change.status === "offline") {
       if (change.passive) this.sup.o.pipeline.closeSession(this.spec.tenantId, this.spec.platform, this.spec.channelId);
       else this.scheduleRetry("offline");
-    }
-    else if (change.status === "error") this.scheduleRetry("error");
+    } else if (change.status === "error") this.scheduleRetry("error");
     else if (change.status === "rate_limited") {
       this.sup.noteRateLimit(this.spec.platform, change.retryInMs ?? 60_000);
       this.scheduleRetry("rate_limited", change.retryInMs);
@@ -334,7 +340,13 @@ export class Supervisor {
     for (const c of this.conns.values()) byStatus[c.snapshot().status] = (byStatus[c.snapshot().status] ?? 0) + 1;
     const cooldown: Record<string, number> = {};
     for (const p of this.cooldownUntil.keys()) if (this.cooldownLeft(p) > 0) cooldown[p] = this.cooldownLeft(p);
-    return { total: this.conns.size, byStatus, queued: [...this.sems.values()].reduce((n, s) => n + s.queued, 0), rateLimitHits: this.rateLimitHits, cooldownMs: cooldown };
+    return {
+      total: this.conns.size,
+      byStatus,
+      queued: [...this.sems.values()].reduce((n, s) => n + s.queued, 0),
+      rateLimitHits: this.rateLimitHits,
+      cooldownMs: cooldown,
+    };
   }
 
   async moderate(id: string, tenantId: string, req: ModerationRequest): Promise<void> {

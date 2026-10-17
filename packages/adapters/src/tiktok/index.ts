@@ -156,7 +156,12 @@ class TikTokAdapter implements PlatformAdapter {
 
   private wire(c: TikTokClientLike) {
     c.on("chat", (d: any) =>
-      this.emit("chat", { message: String(d.comment ?? ""), badges: [], messageId: d.msgId ? String(d.msgId) : undefined }, actorOf(d.user), this.nextId(d.msgId)),
+      this.emit(
+        "chat",
+        { message: String(d.comment ?? ""), badges: [], messageId: d.msgId ? String(d.msgId) : undefined },
+        actorOf(d.user),
+        this.nextId(d.msgId),
+      ),
     );
 
     c.on("gift", (d: any) => {

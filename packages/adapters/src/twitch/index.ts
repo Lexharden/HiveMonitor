@@ -53,7 +53,13 @@ class TwitchAdapter implements PlatformAdapter {
     this.h.onStatus({ status, at: new Date(), detail, passive });
   }
 
-  private emit(type: EventType, payload: unknown, actor: { id: string; name: string; avatar: string | null } | null, key: string, occurredAt?: Date) {
+  private emit(
+    type: EventType,
+    payload: unknown,
+    actor: { id: string; name: string; avatar: string | null } | null,
+    key: string,
+    occurredAt?: Date,
+  ) {
     try {
       this.h.onEvent(
         parseEvent({
@@ -113,7 +119,10 @@ class TwitchAdapter implements PlatformAdapter {
     } catch (err) {
       this.attachment = undefined;
       const status = err instanceof HelixError ? err.status : 0;
-      this.setStatus("error", status === 401 || status === 403 ? "Twitch rechazó la autorización" : String((err as Error).message).slice(0, 200));
+      this.setStatus(
+        "error",
+        status === 401 || status === 403 ? "Twitch rechazó la autorización" : String((err as Error).message).slice(0, 200),
+      );
       return;
     }
 
@@ -178,7 +187,12 @@ class TwitchAdapter implements PlatformAdapter {
         break;
       case "timeout":
         if (!req.targetId) throw new Error("target_required");
-        await helix.banUser(token, { ...base, userId: req.targetId, durationSec: Math.min(req.durationSec ?? 600, 1_209_600), reason: req.reason });
+        await helix.banUser(token, {
+          ...base,
+          userId: req.targetId,
+          durationSec: Math.min(req.durationSec ?? 600, 1_209_600),
+          reason: req.reason,
+        });
         break;
       case "unban":
         if (!req.targetId) throw new Error("target_required");
@@ -189,7 +203,12 @@ class TwitchAdapter implements PlatformAdapter {
         await helix.deleteMessage(token, { ...base, messageId: req.messageId });
         break;
     }
-    this.emit("moderation", { action: req.action, targetId: req.targetId, reason: req.reason, durationSec: req.durationSec }, null, `mod_${Date.now()}_${this.seq++}`);
+    this.emit(
+      "moderation",
+      { action: req.action, targetId: req.targetId, reason: req.reason, durationSec: req.durationSec },
+      null,
+      `mod_${Date.now()}_${this.seq++}`,
+    );
   }
 
   async disconnect(): Promise<void> {

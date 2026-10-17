@@ -45,7 +45,14 @@ async function openSse(token: string, tenantId: string): Promise<Sse> {
         const m: { event: string; data: any; id?: string } = { event: "message", data: null };
         for (const line of block.split("\n")) {
           if (line.startsWith("event:")) m.event = line.slice(6).trim();
-          else if (line.startsWith("data:")) m.data = (() => { try { return JSON.parse(line.slice(5)); } catch { return line.slice(5).trim(); } })();
+          else if (line.startsWith("data:"))
+            m.data = (() => {
+              try {
+                return JSON.parse(line.slice(5));
+              } catch {
+                return line.slice(5).trim();
+              }
+            })();
           else if (line.startsWith("id:")) m.id = line.slice(3).trim();
         }
         messages.push(m);
@@ -61,7 +68,8 @@ async function openSse(token: string, tenantId: string): Promise<Sse> {
     async waitFor(pred, ms = 5000) {
       const t = Date.now();
       while (!messages.some(pred)) {
-        if (Date.now() - t > ms) throw new Error(`timeout; recibidos: ${messages.map((m) => m.event + ":" + (m.data?.type ?? "")).join(",")}`);
+        if (Date.now() - t > ms)
+          throw new Error(`timeout; recibidos: ${messages.map((m) => m.event + ":" + (m.data?.type ?? "")).join(",")}`);
         await sleep(20);
       }
     },
@@ -80,7 +88,9 @@ beforeAll(async () => {
   owner = await env.signUp("o@rt.dev");
   otherOwner = await env.signUp("o2@rt.dev");
   org = ((await (await env.call(owner, "POST", "/api/auth/organization/create", { name: "RT", slug: "rt" })).json()) as { id: string }).id;
-  otherOrg = ((await (await env.call(otherOwner, "POST", "/api/auth/organization/create", { name: "RT2", slug: "rt2" })).json()) as { id: string }).id;
+  otherOrg = (
+    (await (await env.call(otherOwner, "POST", "/api/auth/organization/create", { name: "RT2", slug: "rt2" })).json()) as { id: string }
+  ).id;
   analyst = await env.signUp("an@rt.dev");
   moderator = await env.signUp("mo@rt.dev");
   await invite("analyst", "an@rt.dev", analyst);
@@ -179,7 +189,9 @@ describe("flujo completo con adaptador mock", () => {
 
   test("el estado de la conexión se guarda en la base de datos", async () => {
     await sleep(50);
-    const [row] = await withTenant(env.app.db, org, (tx) => tx.select().from(schema.platformConnection).where(eq(schema.platformConnection.id, connId)));
+    const [row] = await withTenant(env.app.db, org, (tx) =>
+      tx.select().from(schema.platformConnection).where(eq(schema.platformConnection.id, connId)),
+    );
     expect(row?.status).toBe("live");
   });
 
@@ -198,7 +210,15 @@ describe("flujo completo con adaptador mock", () => {
       });
 
     const modWs = await open(moderator);
-    const ok = await request(modWs, { type: "moderate", id: "1", connectionId: connId, action: "timeout", targetId: "u_bruno", durationSec: 60, reason: "spam" });
+    const ok = await request(modWs, {
+      type: "moderate",
+      id: "1",
+      connectionId: connId,
+      action: "timeout",
+      targetId: "u_bruno",
+      durationSec: 60,
+      reason: "spam",
+    });
     expect(ok).toEqual({ type: "ack", id: "1", ok: true });
     await sse.waitFor((m) => m.event === "event" && m.data.type === "moderation" && m.data.payload.action === "timeout");
     modWs.close();
@@ -259,8 +279,16 @@ describe("flujo completo con adaptador mock", () => {
 
 describe("límites y suspensión", () => {
   test("límite de conexiones por tenant", async () => {
-    await env.admin.db.update(schema.tenantSettings).set({ limits: { maxConnections: 1 } }).where(eq(schema.tenantSettings.tenantId, otherOrg));
-    const mk = (id: string) => env.call(otherOwner, "POST", `/api/t/${otherOrg}/connections`, { platform: "twitch", channelId: id, config: { mode: "mock", intervalMs: 500 } });
+    await env.admin.db
+      .update(schema.tenantSettings)
+      .set({ limits: { maxConnections: 1 } })
+      .where(eq(schema.tenantSettings.tenantId, otherOrg));
+    const mk = (id: string) =>
+      env.call(otherOwner, "POST", `/api/t/${otherOrg}/connections`, {
+        platform: "twitch",
+        channelId: id,
+        config: { mode: "mock", intervalMs: 500 },
+      });
     expect((await mk("a")).status).toBe(201);
     expect((await mk("b")).status).toBe(409);
     expect((await mk("a")).status).toBe(409);
@@ -281,8 +309,14 @@ describe("límites y suspensión", () => {
 describe("resiliencia de la persistencia", () => {
   test("un evento que Postgres rechaza (NUL en texto) se descarta sin perder el resto del lote", async () => {
     const mk = (id: string, message: string) => ({
-      id, tenantId: org, platform: "tiktok" as const, channelId: "poison", type: "chat" as const,
-      occurredAt: new Date(), actor: null, payload: { message, badges: [] },
+      id,
+      tenantId: org,
+      platform: "tiktok" as const,
+      channelId: "poison",
+      type: "chat" as const,
+      occurredAt: new Date(),
+      actor: null,
+      payload: { message, badges: [] },
     });
     const p = env.deps.ingest.pipeline;
     p.handleEvent(mk("ok1", "hola"));
@@ -290,7 +324,11 @@ describe("resiliencia de la persistencia", () => {
     p.handleEvent(mk("ok2", "adiós"));
     await p.flush();
     await p.flush(); // si el lote hubiera quedado reencolado, seguiría fallando
-    const ids = (await withTenant(env.app.db, org, (tx) => tx.select({ id: schema.event.id }).from(schema.event).where(eq(schema.event.channelId, "poison")))).map((r) => r.id);
+    const ids = (
+      await withTenant(env.app.db, org, (tx) =>
+        tx.select({ id: schema.event.id }).from(schema.event).where(eq(schema.event.channelId, "poison")),
+      )
+    ).map((r) => r.id);
     expect(ids.sort()).toEqual(["ok1", "ok2"]);
   });
 });

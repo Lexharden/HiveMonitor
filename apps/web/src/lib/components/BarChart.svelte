@@ -87,11 +87,15 @@
     {#if platforms.length >= 2}
       <ul class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-2" aria-label="Leyenda">
         {#each platforms as p (p)}
-          <li class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-sm" style:background={COLOR[p]}></span>{t(`platform.${p}` as const)}</li>
+          <li class="inline-flex items-center gap-1.5">
+            <span class="size-2.5 rounded-sm" style:background={COLOR[p]}></span>{t(`platform.${p}` as const)}
+          </li>
         {/each}
       </ul>
     {:else}<span></span>{/if}
-    <button class="text-xs text-fg-3 underline-offset-2 hover:underline" onclick={() => (showTable = !showTable)}>{showTable ? t("common.chart") : t("common.table")}</button>
+    <button class="text-xs text-fg-3 underline-offset-2 hover:underline" onclick={() => (showTable = !showTable)}
+      >{showTable ? t("common.chart") : t("common.table")}</button
+    >
   </div>
 
   {#if stacks.length === 0 || platforms.length === 0}
@@ -119,7 +123,15 @@
     </div>
   {:else}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <svg viewBox="0 0 {width} {H}" class="block w-full touch-pan-y select-none" style:height="{H}px" role="img" aria-label="{title}. {label}" onpointermove={onMove} onpointerleave={() => (hover = null)}>
+    <svg
+      viewBox="0 0 {width} {H}"
+      class="block w-full touch-pan-y select-none"
+      style:height="{H}px"
+      role="img"
+      aria-label="{title}. {label}"
+      onpointermove={onMove}
+      onpointerleave={() => (hover = null)}
+    >
       {#each yTicks as v (v)}
         <line x1={M.left} x2={width - M.right} y1={y(v)} y2={y(v)} stroke="var(--grid)" />
         <text x={M.left - 8} y={y(v) + 4} text-anchor="end" font-size="11" fill="var(--fg-3)" class="tabular-nums">{format(v)}</text>
@@ -131,7 +143,11 @@
           {#if g.value > 0}
             {@const top = y(g.to)}
             {@const h = Math.max(1, y(g.from) - top - (gi === 0 ? 0 : GAP))}
-            <path d={topRounded(cx(i) - barW / 2, top, barW, h, gi === lastIdx)} fill={COLOR[g.platform]} opacity={hover === null || hover === i ? 1 : 0.55} />
+            <path
+              d={topRounded(cx(i) - barW / 2, top, barW, h, gi === lastIdx)}
+              fill={COLOR[g.platform]}
+              opacity={hover === null || hover === i ? 1 : 0.55}
+            />
           {/if}
         {/each}
         {#if i % labelEvery === 0}
@@ -155,7 +171,9 @@
           </p>
         {/each}
         {#if hovered.segs.filter((g) => g.value > 0).length > 1}
-          <p class="mt-1 flex border-t border-border pt-1 font-semibold"><span class="text-fg-2">Total</span><span class="ml-auto tabular-nums">{format(hovered.total)}</span></p>
+          <p class="mt-1 flex border-t border-border pt-1 font-semibold">
+            <span class="text-fg-2">Total</span><span class="ml-auto tabular-nums">{format(hovered.total)}</span>
+          </p>
         {/if}
       </div>
     {/if}

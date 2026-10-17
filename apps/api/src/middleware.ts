@@ -7,6 +7,7 @@ import { resolvePermissions, type Permission } from "@hivemonitor/core";
 import { schema, withTenant } from "@hivemonitor/db";
 import { isProd } from "./config.ts";
 import type { AppDeps, AppEnv } from "./context.ts";
+import { httpCounters } from "./metrics.ts";
 import { clientIp } from "./net.ts";
 
 /** Id de petición + IP real (respetando TRUSTED_PROXIES) + log de acceso. */
@@ -24,9 +25,17 @@ export function requestContext(deps: AppDeps): MiddlewareHandler<AppEnv> {
     c.header("x-request-id", c.get("requestId"));
     const start = performance.now();
     await next();
+    httpCounters.observe(c.req.method, c.res.status);
     if (c.req.path !== "/healthz") {
       deps.logger.info(
-        { id: c.get("requestId"), method: c.req.method, path: c.req.path, status: c.res.status, ms: Math.round(performance.now() - start), ip },
+        {
+          id: c.get("requestId"),
+          method: c.req.method,
+          path: c.req.path,
+          status: c.res.status,
+          ms: Math.round(performance.now() - start),
+          ip,
+        },
         "request",
       );
     }

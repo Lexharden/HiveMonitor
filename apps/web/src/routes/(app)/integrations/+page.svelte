@@ -67,8 +67,15 @@
   const msg = (err: unknown): string => {
     if (!(err instanceof ApiError)) return t("common.error");
     return (
-      ({ connection_limit_reached: t("int.limit"), already_exists: t("int.exists"), platform_not_available: t("int.notAvailable"), adapter_not_available: t("int.notAvailable"), mock_not_allowed: t("int.mockNotAllowed") } as Record<string, string>)[err.code] ??
-      t("common.error")
+      (
+        {
+          connection_limit_reached: t("int.limit"),
+          already_exists: t("int.exists"),
+          platform_not_available: t("int.notAvailable"),
+          adapter_not_available: t("int.notAvailable"),
+          mock_not_allowed: t("int.mockNotAllowed"),
+        } as Record<string, string>
+      )[err.code] ?? t("common.error")
     );
   };
 
@@ -118,7 +125,14 @@
 {#if !allowed}
   <p class="text-fg-2">{t("int.noPermission")}</p>
 {:else}
-  {#if notice}<p class="mb-4 rounded-lg border px-3 py-2 text-sm {notice.ok ? 'border-good/40 bg-good/10 text-good' : 'border-bad/40 bg-bad/10 text-bad'}" role="status">{notice.text}</p>{/if}
+  {#if notice}<p
+      class="mb-4 rounded-lg border px-3 py-2 text-sm {notice.ok
+        ? 'border-good/40 bg-good/10 text-good'
+        : 'border-bad/40 bg-bad/10 text-bad'}"
+      role="status"
+    >
+      {notice.text}
+    </p>{/if}
   {#if error}<p class="mb-4 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad" role="alert">{error}</p>{/if}
 
   <div class="card mb-6 divide-y divide-border">
@@ -126,8 +140,14 @@
     {#each conns as c (c.id)}
       <div class="flex flex-wrap items-center gap-3 p-4">
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-3"><PlatformBadge platform={c.platform} /><StatusBadge status={c.status} queued={c.runtime?.queued} /></div>
-          <p class="mt-1 truncate font-medium">{c.channelName ?? c.channelId}{#if c.config.mode === "mock"}<span class="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg-3">demo</span>{/if}</p>
+          <div class="flex items-center gap-3">
+            <PlatformBadge platform={c.platform} /><StatusBadge status={c.status} queued={c.runtime?.queued} />
+          </div>
+          <p class="mt-1 truncate font-medium">
+            {c.channelName ?? c.channelId}{#if c.config.mode === "mock"}<span
+                class="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg-3">demo</span
+              >{/if}
+          </p>
           {#if c.lastError}<p class="mt-0.5 truncate text-xs text-bad">{c.lastError}</p>{/if}
         </div>
         {#if c.platform === "twitch" && (c.status === "error" || !c.enabled)}
@@ -138,7 +158,11 @@
         {:else}
           <button class="btn btn-primary" onclick={() => act(() => api!.connect(c.id))}>{t("common.connect")}</button>
         {/if}
-        <button class="btn" aria-label={t("common.delete")} onclick={() => confirm(t("int.confirmDelete")) && act(() => api!.deleteConnection(c.id))}>
+        <button
+          class="btn"
+          aria-label={t("common.delete")}
+          onclick={() => confirm(t("int.confirmDelete")) && act(() => api!.deleteConnection(c.id))}
+        >
           <Icon name="trash" class="size-4" />
         </button>
       </div>
@@ -187,7 +211,9 @@
       {#each tokens as tk (tk.id)}
         <div class="flex items-center gap-3 py-2 text-sm">
           <span class="flex-1 font-medium">{tk.label}</span>
-          <span class="text-xs text-fg-3">{t("hb.lastUsed")}: {tk.lastUsedAt ? new Date(tk.lastUsedAt).toLocaleString("es") : t("hb.never")}</span>
+          <span class="text-xs text-fg-3"
+            >{t("hb.lastUsed")}: {tk.lastUsedAt ? new Date(tk.lastUsedAt).toLocaleString("es") : t("hb.never")}</span
+          >
           <button class="btn" onclick={() => act(() => api!.heartbeat.revokeToken(tk.id))}>{t("hb.revoke")}</button>
         </div>
       {:else}

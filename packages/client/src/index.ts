@@ -176,7 +176,13 @@ export interface HeartbeatSource {
 export interface SystemInfo {
   uptimeSec: number;
   memory: { rssMb: number; heapUsedMb: number };
-  connections: { total: number; byStatus: Record<string, number>; queued: number; rateLimitHits: number; cooldownMs: Record<string, number> };
+  connections: {
+    total: number;
+    byStatus: Record<string, number>;
+    queued: number;
+    rateLimitHits: number;
+    cooldownMs: Record<string, number>;
+  };
   subscribers: number | null;
   errors: { at: string; level: string; msg: string; detail?: string }[];
   connectionList: { id: string; tenantId: string; platform: Platform; status: ConnectionStatus; detail?: string; attempts: number }[];
@@ -239,13 +245,15 @@ export function createClient(opts: ClientOptions = {}) {
     const body = text ? safeJson(text) : null;
     if (!res.ok) {
       if (res.status === 401) opts.onUnauthorized?.();
-      const code = (body as { error?: string; message?: string } | null)?.error ?? (body as { message?: string } | null)?.message ?? res.statusText;
+      const code =
+        (body as { error?: string; message?: string } | null)?.error ?? (body as { message?: string } | null)?.message ?? res.statusText;
       throw new ApiError(res.status, String(code), body);
     }
     return body as T;
   }
 
-  const post = <T>(path: string, body?: unknown) => json<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+  const post = <T>(path: string, body?: unknown) =>
+    json<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
   const t = (org: string, p: string) => `/api/t/${encodeURIComponent(org)}${p}`;
 
   return {
@@ -276,10 +284,13 @@ export function createClient(opts: ClientOptions = {}) {
       create: (name: string, slug: string) => post<{ id: string }>("/api/auth/organization/create", { name, slug }),
       setActive: (organizationId: string) => post("/api/auth/organization/set-active", { organizationId }),
       acceptInvitation: (invitationId: string) => post("/api/auth/organization/accept-invitation", { invitationId }),
-      invite: (organizationId: string, email: string, role: string) => post<{ id: string }>("/api/auth/organization/invite-member", { organizationId, email, role }),
+      invite: (organizationId: string, email: string, role: string) =>
+        post<{ id: string }>("/api/auth/organization/invite-member", { organizationId, email, role }),
       cancelInvitation: (invitationId: string) => post("/api/auth/organization/cancel-invitation", { invitationId }),
-      updateRole: (organizationId: string, memberId: string, role: string) => post("/api/auth/organization/update-member-role", { organizationId, memberId, role }),
-      removeMember: (organizationId: string, memberIdOrEmail: string) => post("/api/auth/organization/remove-member", { organizationId, memberIdOrEmail }),
+      updateRole: (organizationId: string, memberId: string, role: string) =>
+        post("/api/auth/organization/update-member-role", { organizationId, memberId, role }),
+      removeMember: (organizationId: string, memberIdOrEmail: string) =>
+        post("/api/auth/organization/remove-member", { organizationId, memberIdOrEmail }),
     },
 
     // --- Tenant ---
@@ -294,7 +305,8 @@ export function createClient(opts: ClientOptions = {}) {
         /** Inicia la autorización OAuth de Twitch; devuelve la URL a abrir. */
         twitchAuthorize: (client: "web" | "native") => post<{ url: string }>(t(orgId, "/integrations/twitch/authorize"), { client }),
         analytics: {
-          overview: (days: number, platform?: Platform) => json<Overview>(t(orgId, `/analytics/overview?days=${days}${platform ? `&platform=${platform}` : ""}`)),
+          overview: (days: number, platform?: Platform) =>
+            json<Overview>(t(orgId, `/analytics/overview?days=${days}${platform ? `&platform=${platform}` : ""}`)),
           sessions: (opts: { limit?: number; before?: string; platform?: Platform } = {}) => {
             const q = new URLSearchParams();
             if (opts.limit) q.set("limit", String(opts.limit));
@@ -304,7 +316,9 @@ export function createClient(opts: ClientOptions = {}) {
           },
           session: (id: string) => json<SessionDetail>(t(orgId, `/analytics/sessions/${encodeURIComponent(id)}`)),
           topDonors: (days: number, limit = 10, platform?: Platform) =>
-            json<{ from: string; donors: Donor[] }>(t(orgId, `/analytics/top-donors?days=${days}&limit=${limit}${platform ? `&platform=${platform}` : ""}`)),
+            json<{ from: string; donors: Donor[] }>(
+              t(orgId, `/analytics/top-donors?days=${days}&limit=${limit}${platform ? `&platform=${platform}` : ""}`),
+            ),
         },
         members: {
           list: () => json<{ members: MemberRow[]; invitations: InvitationRow[]; emailEnabled: boolean }>(t(orgId, "/members")),
@@ -313,14 +327,16 @@ export function createClient(opts: ClientOptions = {}) {
         alerts: {
           rules: () => json<{ rules: AlertRule[] }>(t(orgId, "/alerts/rules")),
           create: (r: AlertRuleInput) => post<{ id: string }>(t(orgId, "/alerts/rules"), r),
-          update: (id: string, patch: Partial<AlertRuleInput> & { enabled?: boolean }) => json(t(orgId, `/alerts/rules/${id}`), { method: "PATCH", body: JSON.stringify(patch) }),
+          update: (id: string, patch: Partial<AlertRuleInput> & { enabled?: boolean }) =>
+            json(t(orgId, `/alerts/rules/${id}`), { method: "PATCH", body: JSON.stringify(patch) }),
           remove: (id: string) => json(t(orgId, `/alerts/rules/${id}`), { method: "DELETE" }),
           test: (id: string) => post(t(orgId, `/alerts/rules/${id}/test`)),
           events: (limit = 30) => json<{ events: AlertEventRow[] }>(t(orgId, `/alerts/events?limit=${limit}`)),
         },
         heartbeat: {
           sources: () => json<{ sources: HeartbeatSource[] }>(t(orgId, "/heartbeats")),
-          tokens: () => json<{ tokens: { id: string; label: string; lastUsedAt: string | null; createdAt: string }[] }>(t(orgId, "/heartbeat/tokens")),
+          tokens: () =>
+            json<{ tokens: { id: string; label: string; lastUsedAt: string | null; createdAt: string }[] }>(t(orgId, "/heartbeat/tokens")),
           createToken: (label: string) => post<{ id: string; token: string }>(t(orgId, "/heartbeat/tokens"), { label }),
           revokeToken: (id: string) => json(t(orgId, `/heartbeat/tokens/${id}`), { method: "DELETE" }),
         },
@@ -331,7 +347,20 @@ export function createClient(opts: ClientOptions = {}) {
       };
     },
     admin: {
-      tenants: () => json<{ tenants: { id: string; name: string; slug: string; suspended: boolean | null; members: number; limits: { maxConnections?: number } | null; createdAt: string; connections: number; live: number }[] }>("/api/admin/tenants"),
+      tenants: () =>
+        json<{
+          tenants: {
+            id: string;
+            name: string;
+            slug: string;
+            suspended: boolean | null;
+            members: number;
+            limits: { maxConnections?: number } | null;
+            createdAt: string;
+            connections: number;
+            live: number;
+          }[];
+        }>("/api/admin/tenants"),
       system: () => json<SystemInfo>("/api/admin/system"),
       patchTenant: (id: string, body: { suspended?: boolean; limits?: Record<string, unknown> }) =>
         json(`/api/admin/tenants/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -404,7 +433,14 @@ export function createClient(opts: ClientOptions = {}) {
       if (m?.type === "ack" && m.id) pending.get(m.id)?.({ ok: !!m.ok, error: m.error });
     };
     return {
-      moderate(req: { connectionId: string; action: "ban" | "timeout" | "delete" | "unban"; targetId?: string; messageId?: string; durationSec?: number; reason?: string }) {
+      moderate(req: {
+        connectionId: string;
+        action: "ban" | "timeout" | "delete" | "unban";
+        targetId?: string;
+        messageId?: string;
+        durationSec?: number;
+        reason?: string;
+      }) {
         const id = crypto.randomUUID();
         return new Promise<{ ok: boolean; error?: string }>((resolve) => {
           const timer = setTimeout(() => (pending.delete(id), resolve({ ok: false, error: "timeout" })), 10_000);

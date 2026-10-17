@@ -27,7 +27,12 @@ export async function subscribeAll(
       continue;
     }
     try {
-      const r = await helix.createSubscription(token, { type: s.type, version: s.version, condition: s.condition(broadcasterId), transport });
+      const r = await helix.createSubscription(token, {
+        type: s.type,
+        version: s.version,
+        condition: s.condition(broadcasterId),
+        transport,
+      });
       const id = r.data[0]?.id;
       if (id) out.ids.push(id);
     } catch (err) {

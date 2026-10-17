@@ -58,7 +58,15 @@ export async function createTestEnv(
   const bus = new InProcessBus();
   const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
   const twitch = createTwitchService({ config, logger, adminDb: admin.db, encryptor, fetch: twitchFetch });
-  const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor, factories: twitch ? { twitch: twitch.factory } : undefined });
+  const ingest = createIngest({
+    config,
+    logger,
+    bus,
+    adminDb: admin.db,
+    appDb: app.db,
+    encryptor,
+    factories: twitch ? { twitch: twitch.factory } : undefined,
+  });
   const alerts = new AlertEngine({ appDb: app.db, bus, encryptor, logger, fetch: alertsFetch });
   alerts.attach(ingest.pipeline, ingest.supervisor);
   const deps: AppDeps = {

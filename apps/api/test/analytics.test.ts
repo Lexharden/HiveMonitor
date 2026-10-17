@@ -11,7 +11,16 @@ const DAY = 24 * HOUR;
 
 describe("agregador (unitario)", () => {
   const ev = (type: string, payload: object, at: number, tenantId = "t", platform = "tiktok") =>
-    ({ id: crypto.randomUUID(), tenantId, platform, channelId: "c", type, occurredAt: new Date(at), actor: null, payload }) as unknown as NormalizedEvent;
+    ({
+      id: crypto.randomUUID(),
+      tenantId,
+      platform,
+      channelId: "c",
+      type,
+      occurredAt: new Date(at),
+      actor: null,
+      payload,
+    }) as unknown as NormalizedEvent;
 
   test("pico, media, mensajes, seguidores y donaciones por hora/plataforma/tenant", () => {
     const a = new Aggregator();
@@ -55,8 +64,26 @@ describe("agregador (unitario)", () => {
 
   test("totalsOf: media ponderada por muestras", () => {
     const t = totalsOf([
-      { bucket: "x", platform: "a", viewers_peak: 10, viewers_avg: 5, viewer_samples: 1, donations_minor: 1, messages: 1, new_followers: 0 },
-      { bucket: "y", platform: "a", viewers_peak: 40, viewers_avg: 20, viewer_samples: 3, donations_minor: "2", messages: 1, new_followers: 1 },
+      {
+        bucket: "x",
+        platform: "a",
+        viewers_peak: 10,
+        viewers_avg: 5,
+        viewer_samples: 1,
+        donations_minor: 1,
+        messages: 1,
+        new_followers: 0,
+      },
+      {
+        bucket: "y",
+        platform: "a",
+        viewers_peak: 40,
+        viewers_avg: 20,
+        viewer_samples: 3,
+        donations_minor: "2",
+        messages: 1,
+        new_followers: 1,
+      },
     ]);
     expect(t).toMatchObject({ peakViewers: 40, avgViewers: 16.3, donationsMinor: 3, messages: 2, newFollowers: 1 });
   });
@@ -71,19 +98,45 @@ describe("analíticas (integración)", () => {
   let org: string;
   let otherOrg: string;
 
-  const mk = (tenantId: string, type: string, payload: object, at: number, actor: { id: string; name: string } | null = null, channelId = "chan") =>
-    ({ id: crypto.randomUUID(), tenantId, platform: "tiktok", channelId, type, occurredAt: new Date(at), actor, payload }) as unknown as NormalizedEvent;
+  const mk = (
+    tenantId: string,
+    type: string,
+    payload: object,
+    at: number,
+    actor: { id: string; name: string } | null = null,
+    channelId = "chan",
+  ) =>
+    ({
+      id: crypto.randomUUID(),
+      tenantId,
+      platform: "tiktok",
+      channelId,
+      type,
+      occurredAt: new Date(at),
+      actor,
+      payload,
+    }) as unknown as NormalizedEvent;
 
   beforeAll(async () => {
     env = await createTestEnv();
     owner = await env.signUp("o@an.dev");
     other = await env.signUp("o2@an.dev");
-    org = ((await (await env.call(owner, "POST", "/api/auth/organization/create", { name: "AN", slug: "an" })).json()) as { id: string }).id;
-    otherOrg = ((await (await env.call(other, "POST", "/api/auth/organization/create", { name: "AN2", slug: "an2" })).json()) as { id: string }).id;
+    org = ((await (await env.call(owner, "POST", "/api/auth/organization/create", { name: "AN", slug: "an" })).json()) as { id: string })
+      .id;
+    otherOrg = (
+      (await (await env.call(other, "POST", "/api/auth/organization/create", { name: "AN2", slug: "an2" })).json()) as { id: string }
+    ).id;
     moderator = await env.signUp("m@an.dev");
     analyst = await env.signUp("a@an.dev");
-    for (const [role, email, tok] of [["moderator", "m@an.dev", moderator], ["analyst", "a@an.dev", analyst]] as const) {
-      const id = ((await (await env.call(owner, "POST", "/api/auth/organization/invite-member", { email, role, organizationId: org })).json()) as { id: string }).id;
+    for (const [role, email, tok] of [
+      ["moderator", "m@an.dev", moderator],
+      ["analyst", "a@an.dev", analyst],
+    ] as const) {
+      const id = (
+        (await (await env.call(owner, "POST", "/api/auth/organization/invite-member", { email, role, organizationId: org })).json()) as {
+          id: string;
+        }
+      ).id;
       await env.call(tok, "POST", "/api/auth/organization/accept-invitation", { invitationId: id });
     }
 
@@ -99,9 +152,15 @@ describe("analíticas (integración)", () => {
     for (let i = 0; i < 5; i++) p.handleEvent(mk(org, "chat", { message: `m${i}`, badges: [] }, start + 2000 + i, u1));
     p.handleEvent(mk(org, "follow", {}, start + 3000, u1));
     p.handleEvent(mk(org, "follow", {}, start + 3001, u2));
-    p.handleEvent(mk(org, "donation", { kind: "gift", amountMinor: 100, currency: "TIKTOK_COIN", usdMinorEstimate: 50, count: 1 }, start + 4000, u1));
-    p.handleEvent(mk(org, "donation", { kind: "gift", amountMinor: 50, currency: "TIKTOK_COIN", usdMinorEstimate: 25, count: 1 }, start + 5000, u1));
-    p.handleEvent(mk(org, "donation", { kind: "gift", amountMinor: 200, currency: "TIKTOK_COIN", usdMinorEstimate: 100, count: 1 }, start + 6000, u2));
+    p.handleEvent(
+      mk(org, "donation", { kind: "gift", amountMinor: 100, currency: "TIKTOK_COIN", usdMinorEstimate: 50, count: 1 }, start + 4000, u1),
+    );
+    p.handleEvent(
+      mk(org, "donation", { kind: "gift", amountMinor: 50, currency: "TIKTOK_COIN", usdMinorEstimate: 25, count: 1 }, start + 5000, u1),
+    );
+    p.handleEvent(
+      mk(org, "donation", { kind: "gift", amountMinor: 200, currency: "TIKTOK_COIN", usdMinorEstimate: 100, count: 1 }, start + 6000, u2),
+    );
     p.handleEvent(mk(org, "stream_end", {}, start + 2 * HOUR + 5000));
     // periodo anterior (hace 10 días): 2 mensajes
     p.handleEvent(mk(org, "chat", { message: "viejo", badges: [] }, now - 10 * DAY, u1, "canal-viejo"));
@@ -113,10 +172,12 @@ describe("analíticas (integración)", () => {
     await env?.stop();
   });
 
-  const get = async (token: string, path: string) => (await env.call(token, "GET", `/api/t/${org}${path}`));
+  const get = async (token: string, path: string) => await env.call(token, "GET", `/api/t/${org}${path}`);
 
   test("las estadísticas por hora se calculan bien y el volcado posterior es aditivo", async () => {
-    const rows = (await withTenant(env.app.db, org, (tx) => tx.execute(sql`select * from stats_hourly order by bucket`))) as unknown as any[];
+    const rows = (await withTenant(env.app.db, org, (tx) =>
+      tx.execute(sql`select * from stats_hourly order by bucket`),
+    )) as unknown as any[];
     const first = rows.find((r) => r.viewer_samples === 1 && r.viewers_peak === 10 && r.messages === 5);
     expect(first).toBeDefined();
     expect(first.new_followers).toBe(2);
@@ -128,7 +189,9 @@ describe("analíticas (integración)", () => {
     p.handleEvent(mk(org, "viewer_count", { viewers: 60 }, hour + 1000, null, "chan2"));
     p.handleEvent(mk(org, "viewer_count", { viewers: 20 }, hour + 2000, null, "chan2"));
     await p.flush();
-    const [after] = (await withTenant(env.app.db, org, (tx) => tx.execute(sql`select * from stats_hourly where bucket = ${new Date(hour).toISOString()}::timestamptz`))) as unknown as any[];
+    const [after] = (await withTenant(env.app.db, org, (tx) =>
+      tx.execute(sql`select * from stats_hourly where bucket = ${new Date(hour).toISOString()}::timestamptz`),
+    )) as unknown as any[];
     expect(after.viewers_peak).toBe(60);
     expect(after.viewer_samples).toBe(3);
     expect(after.viewers_avg).toBeCloseTo((10 + 60 + 20) / 3, 1);

@@ -18,9 +18,7 @@ export class TwitchTokenManager implements TwitchTokenService {
   private app?: { token: string; expiresAt: number };
   private appInflight?: Promise<string>;
 
-  constructor(
-    private readonly o: { oauth: TwitchOAuthConfig; adminDb: Database; encryptor: Encryptor; logger: Logger },
-  ) {}
+  constructor(private readonly o: { oauth: TwitchOAuthConfig; adminDb: Database; encryptor: Encryptor; logger: Logger }) {}
 
   async ensureFresh(connectionId: string, current: TwitchCredentials): Promise<TwitchCredentials> {
     const now = Date.now();
@@ -70,7 +68,12 @@ export class TwitchTokenManager implements TwitchTokenService {
     this.o.logger.warn({ connection: id }, "autorización de Twitch revocada: conexión deshabilitada");
     await this.o.adminDb
       .update(schema.platformConnection)
-      .set({ enabled: false, status: "error", lastError: "Autorización de Twitch revocada. Vuelve a conectar el canal.", updatedAt: new Date() })
+      .set({
+        enabled: false,
+        status: "error",
+        lastError: "Autorización de Twitch revocada. Vuelve a conectar el canal.",
+        updatedAt: new Date(),
+      })
       .where(eq(schema.platformConnection.id, id));
   }
 

@@ -24,11 +24,15 @@ beforeAll(async () => {
   ]);
   await withTenant(app.db, A, async (tx) => {
     await tx.insert(schema.platformConnection).values({ id: "c_a", tenantId: A, platform: "tiktok", channelId: "chan_a" });
-    await tx.insert(schema.event).values({ id: "e_a", tenantId: A, platform: "tiktok", channelId: "chan_a", type: "chat", occurredAt: new Date() });
+    await tx
+      .insert(schema.event)
+      .values({ id: "e_a", tenantId: A, platform: "tiktok", channelId: "chan_a", type: "chat", occurredAt: new Date() });
   });
   await withTenant(app.db, B, async (tx) => {
     await tx.insert(schema.platformConnection).values({ id: "c_b", tenantId: B, platform: "twitch", channelId: "chan_b" });
-    await tx.insert(schema.event).values({ id: "e_b", tenantId: B, platform: "twitch", channelId: "chan_b", type: "chat", occurredAt: new Date() });
+    await tx
+      .insert(schema.event)
+      .values({ id: "e_b", tenantId: B, platform: "twitch", channelId: "chan_b", type: "chat", occurredAt: new Date() });
   });
 }, 120_000);
 
@@ -54,9 +58,7 @@ describe("aislamiento entre tenants (RLS)", () => {
   });
 
   test("filtrar por tenant_id ajeno devuelve vacío aunque se pida explícitamente", async () => {
-    const rows = await withTenant(app.db, A, (tx) =>
-      tx.execute(`select * from platform_connection where tenant_id = '${B}'` as never),
-    );
+    const rows = await withTenant(app.db, A, (tx) => tx.execute(`select * from platform_connection where tenant_id = '${B}'` as never));
     expect(rows.length).toBe(0);
   });
 
@@ -73,9 +75,7 @@ describe("aislamiento entre tenants (RLS)", () => {
       tx.update(schema.platformConnection).set({ status: "error" }).returning({ id: schema.platformConnection.id }),
     );
     expect(upd.map((r) => r.id)).toEqual(["c_a"]); // la de B no se toca
-    const del = await withTenant(app.db, A, (tx) =>
-      tx.delete(schema.event).returning({ id: schema.event.id }),
-    );
+    const del = await withTenant(app.db, A, (tx) => tx.delete(schema.event).returning({ id: schema.event.id }));
     expect(del.map((r) => r.id)).toEqual(["e_a"]);
     const left = await admin.db.select().from(schema.event);
     expect(left.map((r) => r.id)).toEqual(["e_b"]);
@@ -87,18 +87,14 @@ describe("aislamiento entre tenants (RLS)", () => {
   });
 
   test("audit_log es de solo inserción, incluso para el propietario", async () => {
-    await withTenant(app.db, A, (tx) =>
-      tx.insert(schema.auditLog).values({ id: "au1", tenantId: A, action: "test" }),
-    );
+    await withTenant(app.db, A, (tx) => tx.insert(schema.auditLog).values({ id: "au1", tenantId: A, action: "test" }));
     await fails(admin.db.delete(schema.auditLog));
     await fails(withTenant(app.db, A, (tx) => tx.update(schema.auditLog).set({ action: "x" })));
   });
 
   test("hive_app no puede cambiar la suspensión del tenant", async () => {
     await admin.db.insert(schema.tenantSettings).values({ tenantId: A });
-    await expect(
-      withTenant(app.db, A, (tx) => tx.update(schema.tenantSettings).set({ suspended: true })),
-    ).rejects.toThrow();
+    await expect(withTenant(app.db, A, (tx) => tx.update(schema.tenantSettings).set({ suspended: true }))).rejects.toThrow();
   });
 
   test("token de heartbeat se resuelve a su tenant vía función SECURITY DEFINER", async () => {

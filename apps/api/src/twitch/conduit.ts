@@ -1,5 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { subscribeAll, unsubscribeAll, type EventSubAttachment, type EventSubListener, type EventSubTransport, type Helix } from "@hivemonitor/adapters";
+import {
+  subscribeAll,
+  unsubscribeAll,
+  type EventSubAttachment,
+  type EventSubListener,
+  type EventSubTransport,
+  type Helix,
+} from "@hivemonitor/adapters";
 import type { Logger } from "../logger.ts";
 
 const MAX_AGE_MS = 10 * 60_000;
@@ -18,7 +25,11 @@ export function verifyTwitchSignature(secret: string, h: SignatureHeaders, rawBo
   if (!h.messageId || !h.timestamp || !h.signature) return false;
   const ts = Date.parse(h.timestamp);
   if (!Number.isFinite(ts) || Math.abs(now - ts) > MAX_AGE_MS) return false;
-  const expected = Buffer.from(`sha256=${createHmac("sha256", secret).update(h.messageId + h.timestamp + rawBody).digest("hex")}`);
+  const expected = Buffer.from(
+    `sha256=${createHmac("sha256", secret)
+      .update(h.messageId + h.timestamp + rawBody)
+      .digest("hex")}`,
+  );
   const given = Buffer.from(h.signature);
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
@@ -80,7 +91,10 @@ export class ConduitTransport implements EventSubTransport {
   }
 
   startMaintenance(everyMs = 5 * 60_000): () => void {
-    const t = setInterval(() => void this.checkShards().catch((err) => this.o.logger.warn({ err }, "falló la comprobación de shards")), everyMs);
+    const t = setInterval(
+      () => void this.checkShards().catch((err) => this.o.logger.warn({ err }, "falló la comprobación de shards")),
+      everyMs,
+    );
     t.unref?.();
     return () => clearInterval(t);
   }
@@ -93,7 +107,8 @@ export class ConduitTransport implements EventSubTransport {
     try {
       const r = await subscribeAll(this.o.helix, token, { method: "conduit", conduit_id: conduitId }, broadcasterId, scopes);
       ids = r.ids;
-      if (r.skipped.length) this.o.logger.info({ broadcasterId, skipped: r.skipped.map((s) => s.type) }, "suscripciones de Twitch omitidas");
+      if (r.skipped.length)
+        this.o.logger.info({ broadcasterId, skipped: r.skipped.map((s) => s.type) }, "suscripciones de Twitch omitidas");
     } catch (err) {
       this.listeners.delete(broadcasterId);
       throw err;

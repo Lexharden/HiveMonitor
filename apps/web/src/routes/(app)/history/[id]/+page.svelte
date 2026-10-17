@@ -27,9 +27,24 @@
   const end = $derived(s ? (s.endedAt ? new Date(s.endedAt).getTime() : Date.now()) : 0);
   const duration = $derived(Math.max(1, end - start));
   const history = $derived(s && detail ? { [s.platform]: detail.timeline.map((p) => ({ t: p.t, v: p.v })) } : {});
-  const avg = $derived(detail && detail.timeline.length ? Math.round(detail.timeline.reduce((n, p) => n + p.v, 0) / detail.timeline.length) : 0);
+  const avg = $derived(
+    detail && detail.timeline.length ? Math.round(detail.timeline.reduce((n, p) => n + p.v, 0) / detail.timeline.length) : 0,
+  );
   const donations = $derived(s ? Object.entries(s.stats.donations ?? {}) : []);
-  const typeLabel = (k: string) => (({ chat: "Mensajes", follow: "Seguidores", donation: "Donaciones", like: "Likes", share: "Compartidos", subscription: "Suscripciones", raid: "Raids", moderation: "Moderación", viewer_count: "Muestras de espectadores" }) as Record<string, string>)[k] ?? k;
+  const typeLabel = (k: string) =>
+    (
+      ({
+        chat: "Mensajes",
+        follow: "Seguidores",
+        donation: "Donaciones",
+        like: "Likes",
+        share: "Compartidos",
+        subscription: "Suscripciones",
+        raid: "Raids",
+        moderation: "Moderación",
+        viewer_count: "Muestras de espectadores",
+      }) as Record<string, string>
+    )[k] ?? k;
   void ({} as MessageKey);
 </script>
 
@@ -52,7 +67,11 @@
     <StatCard label={t("dash.duration")} value={fmtDuration(duration / 1000)} />
     <StatCard label={t("hist.peak")} value={fmtNumber(s.peakViewers)} hint="{t('hist.avg')}: {fmtNumber(avg)}" />
     <StatCard label={t("hist.messages")} value={fmtNumber(s.stats.messages ?? 0)} />
-    <StatCard label={t("hist.followers")} value={fmtNumber(s.stats.followers ?? 0)} hint="{t('dash.likes')}: {fmtNumber(s.stats.likes ?? 0)}" />
+    <StatCard
+      label={t("hist.followers")}
+      value={fmtNumber(s.stats.followers ?? 0)}
+      hint="{t('dash.likes')}: {fmtNumber(s.stats.likes ?? 0)}"
+    />
   </section>
 
   <section class="card mb-6 p-4">
@@ -64,7 +83,9 @@
     <section class="card">
       <h2 class="border-b border-border px-4 py-3 font-medium">{t("hist.topDonors")}</h2>
       {#if donations.length}
-        <p class="border-b border-border px-4 py-2 text-sm text-fg-2">{t("dash.donations")}: {donations.map(([cur, v]) => fmtMoney(v, cur)).join(" · ")}</p>
+        <p class="border-b border-border px-4 py-2 text-sm text-fg-2">
+          {t("dash.donations")}: {donations.map(([cur, v]) => fmtMoney(v, cur)).join(" · ")}
+        </p>
       {/if}
       {#if detail.topDonors.length === 0}
         <p class="p-6 text-center text-sm text-fg-3">{t("hist.noDonors")}</p>
@@ -85,7 +106,10 @@
       <h2 class="border-b border-border px-4 py-3 font-medium">{t("hist.eventsByType")}</h2>
       <dl class="divide-y divide-border">
         {#each Object.entries(detail.eventsByType) as [k, n] (k)}
-          <div class="flex justify-between px-4 py-2.5 text-sm"><dt class="text-fg-2">{typeLabel(k)}</dt><dd class="font-medium tabular-nums">{fmtNumber(n)}</dd></div>
+          <div class="flex justify-between px-4 py-2.5 text-sm">
+            <dt class="text-fg-2">{typeLabel(k)}</dt>
+            <dd class="font-medium tabular-nums">{fmtNumber(n)}</dd>
+          </div>
         {/each}
       </dl>
     </section>

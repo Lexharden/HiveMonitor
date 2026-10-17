@@ -29,7 +29,14 @@ describe("roles y permisos", () => {
 });
 
 describe("evento normalizado", () => {
-  const base = { id: "1", tenantId: "t", platform: "tiktok", channelId: "c", occurredAt: "2026-01-01T00:00:00Z", actor: { id: "u", name: "n" } };
+  const base = {
+    id: "1",
+    tenantId: "t",
+    platform: "tiktok",
+    channelId: "c",
+    occurredAt: "2026-01-01T00:00:00Z",
+    actor: { id: "u", name: "n" },
+  };
   test("valida donación y aplica defaults", () => {
     const e = parseEvent({ ...base, type: "donation", payload: { kind: "gift", amountMinor: 5, currency: "TIKTOK_COIN" } });
     expect(e.type === "donation" && e.payload.count).toBe(1);

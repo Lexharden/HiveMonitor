@@ -42,9 +42,19 @@ export function twitchWebhookRoutes(deps: AppDeps) {
     // Twitch reintenta si no recibe 2xx rápido: los repetidos se confirman sin reprocesar
     if (!t.conduit.firstTime(headers.messageId!)) return c.body(null, 204);
     if (type === "notification") {
-      t.conduit.deliver(String(body.subscription?.type), String(body.subscription?.version ?? "1"), body.event ?? {}, headers.messageId!, headers.timestamp ?? undefined);
+      t.conduit.deliver(
+        String(body.subscription?.type),
+        String(body.subscription?.version ?? "1"),
+        body.event ?? {},
+        headers.messageId!,
+        headers.timestamp ?? undefined,
+      );
     } else if (type === "revocation") {
-      t.conduit.revoke({ type: String(body.subscription?.type), status: String(body.subscription?.status), condition: body.subscription?.condition });
+      t.conduit.revoke({
+        type: String(body.subscription?.type),
+        status: String(body.subscription?.status),
+        condition: body.subscription?.condition,
+      });
       deps.logger.warn({ type: body.subscription?.type, status: body.subscription?.status }, "Twitch revocó una suscripción");
     }
     return c.body(null, 204);
@@ -59,7 +69,11 @@ export function twitchTenantRoutes(deps: AppDeps) {
     if (!deps.twitch) return c.json({ error: "twitch_not_configured" }, 501);
     const body = z.object({ client: z.enum(["web", "native"]).default("web") }).safeParse(await c.req.json().catch(() => ({})));
     const t = c.get("tenant");
-    const state = signState(deps.config.BETTER_AUTH_SECRET, { tenantId: t.tenantId, userId: t.userId, client: body.success ? body.data.client : "web" });
+    const state = signState(deps.config.BETTER_AUTH_SECRET, {
+      tenantId: t.tenantId,
+      userId: t.userId,
+      client: body.success ? body.data.client : "web",
+    });
     return c.json({ url: authorizeUrl(deps.twitch.oauth, state), redirectUri: deps.twitch.oauth.redirectUri });
   });
   return r;
@@ -75,7 +89,11 @@ export function twitchCallbackRoutes(deps: AppDeps) {
 
     const done = (ok: boolean, code = "") =>
       state.client === "native"
-        ? c.html(ok ? page("Twitch conectado", "Ya puedes volver a la aplicación de HiveMonitor.") : page("No se pudo conectar Twitch", "Vuelve a la aplicación e inténtalo de nuevo."))
+        ? c.html(
+            ok
+              ? page("Twitch conectado", "Ya puedes volver a la aplicación de HiveMonitor.")
+              : page("No se pudo conectar Twitch", "Vuelve a la aplicación e inténtalo de nuevo."),
+          )
         : c.redirect(`${deps.config.BASE_URL}/integrations?${ok ? "twitch=ok" : `twitch=error&reason=${encodeURIComponent(code)}`}`);
 
     if (c.req.query("error")) return done(false, c.req.query("error") === "access_denied" ? "denied" : "error");
@@ -108,13 +126,26 @@ export function twitchCallbackRoutes(deps: AppDeps) {
         await withTenant(deps.appDb, state.tenantId, (tx) =>
           tx
             .update(schema.platformConnection)
-            .set({ credentialsEnc: blob, keyVersion: deps.encryptor.keyVersion, enabled: true, channelName: me.display_name, lastError: null, config: { broadcasterId: me.id }, updatedAt: new Date() })
+            .set({
+              credentialsEnc: blob,
+              keyVersion: deps.encryptor.keyVersion,
+              enabled: true,
+              channelName: me.display_name,
+              lastError: null,
+              config: { broadcasterId: me.id },
+              updatedAt: new Date(),
+            })
             .where(eq(schema.platformConnection.id, id)),
         );
       } else {
-        const [settings] = await deps.adminDb.select({ limits: schema.tenantSettings.limits }).from(schema.tenantSettings).where(eq(schema.tenantSettings.tenantId, state.tenantId));
+        const [settings] = await deps.adminDb
+          .select({ limits: schema.tenantSettings.limits })
+          .from(schema.tenantSettings)
+          .where(eq(schema.tenantSettings.tenantId, state.tenantId));
         const max = Number((settings?.limits as { maxConnections?: number } | undefined)?.maxConnections ?? DEFAULT_MAX_CONNECTIONS);
-        const [{ n } = { n: 0 }] = await withTenant(deps.appDb, state.tenantId, (tx) => tx.select({ n: count() }).from(schema.platformConnection));
+        const [{ n } = { n: 0 }] = await withTenant(deps.appDb, state.tenantId, (tx) =>
+          tx.select({ n: count() }).from(schema.platformConnection),
+        );
         if (n >= max) return done(false, "limit");
         id = crypto.randomUUID();
         await withTenant(deps.appDb, state.tenantId, (tx) =>
@@ -139,7 +170,9 @@ export function twitchCallbackRoutes(deps: AppDeps) {
         meta: { platform: "twitch", channel: me.login, missingScopes: missing },
         ip: c.get("ip"),
       });
-      const [row] = await withTenant(deps.appDb, state.tenantId, (tx) => tx.select().from(schema.platformConnection).where(eq(schema.platformConnection.id, id)));
+      const [row] = await withTenant(deps.appDb, state.tenantId, (tx) =>
+        tx.select().from(schema.platformConnection).where(eq(schema.platformConnection.id, id)),
+      );
       if (row) await deps.ingest.startConnection(row);
       return done(true);
     } catch (err) {

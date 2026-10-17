@@ -39,7 +39,7 @@
   const yMax = $derived.by(() => {
     const max = Math.max(1, ...series.flatMap((s) => s.points.map((p) => p.v)));
     const pow = 10 ** Math.floor(Math.log10(max));
-    const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => (s * 4) >= max) ?? pow * 10;
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s * 4 >= max) ?? pow * 10;
     return step * 4;
   });
   const yTicks = $derived([0, 1, 2, 3, 4].map((i) => (yMax / 4) * i));
@@ -163,7 +163,9 @@
         <text x={M.left - 8} y={y(v) + 4} text-anchor="end" font-size="11" fill="var(--fg-3)" class="tabular-nums">{fmtNumber(v)}</text>
       {/each}
       {#each xTicks as tm (tm)}
-        <text x={x(tm)} y={H - 6} text-anchor={tm === xTicks[0] ? "start" : "middle"} font-size="11" fill="var(--fg-3)">{axisFormat(tm)}</text>
+        <text x={x(tm)} y={H - 6} text-anchor={tm === xTicks[0] ? "start" : "middle"} font-size="11" fill="var(--fg-3)"
+          >{axisFormat(tm)}</text
+        >
       {/each}
 
       {#each series as s (s.platform)}
@@ -174,7 +176,8 @@
       {#each endLabels as l (l.platform)}
         <circle cx={x(l.last.t)} cy={y(l.last.v)} r="4" fill={COLOR[l.platform]} stroke="var(--surface)" stroke-width="2" />
         <text x={width - M.right + 8} y={l.ly + 4} font-size="12" fill="var(--fg-2)">
-          {t(`platform.${l.platform}` as const)} <tspan class="tabular-nums" font-weight="600" fill="var(--fg)">{fmtNumber(l.last.v)}</tspan>
+          {t(`platform.${l.platform}` as const)}
+          <tspan class="tabular-nums" font-weight="600" fill="var(--fg)">{fmtNumber(l.last.v)}</tspan>
         </text>
       {/each}
 

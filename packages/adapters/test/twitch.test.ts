@@ -17,7 +17,15 @@ const note = (type: string, event: Record<string, any>, id = "m1") => ({ type, v
 
 describe("mapeo de notificaciones de Twitch", () => {
   test("chat", () => {
-    const m = mapNotification(note("channel.chat.message", { message_id: "x1", chatter_user_id: "9", chatter_user_name: "Ana", message: { text: "hola" }, badges: [{ set_id: "moderator" }] }))!;
+    const m = mapNotification(
+      note("channel.chat.message", {
+        message_id: "x1",
+        chatter_user_id: "9",
+        chatter_user_name: "Ana",
+        message: { text: "hola" },
+        badges: [{ set_id: "moderator" }],
+      }),
+    )!;
     expect(m.type).toBe("chat");
     expect(m.payload).toMatchObject({ message: "hola", badges: ["moderator"], messageId: "x1" });
     expect(m.actor).toMatchObject({ id: "9", name: "Ana" });
@@ -30,12 +38,23 @@ describe("mapeo de notificaciones de Twitch", () => {
     expect(mapNotification(note("channel.cheer", { bits: 0 }))).toBeNull();
   });
   test("subs: se cuenta cada receptor; el resumen del regalador se ignora (sin doble conteo)", () => {
-    expect(mapNotification(note("channel.subscribe", { user_id: "1", user_name: "A", tier: "1000", is_gift: true }))!.payload).toMatchObject({ tier: "tier1", gifted: true });
+    expect(
+      mapNotification(note("channel.subscribe", { user_id: "1", user_name: "A", tier: "1000", is_gift: true }))!.payload,
+    ).toMatchObject({ tier: "tier1", gifted: true });
     expect(mapNotification(note("channel.subscription.gift", { total: 5 }))).toBeNull();
-    expect(mapNotification(note("channel.subscription.message", { user_id: "1", tier: "2000", cumulative_months: 7 }))!.payload).toMatchObject({ tier: "tier2", months: 7 });
+    expect(
+      mapNotification(note("channel.subscription.message", { user_id: "1", tier: "2000", cumulative_months: 7 }))!.payload,
+    ).toMatchObject({ tier: "tier2", months: 7 });
   });
   test("raid y follow", () => {
-    const r = mapNotification(note("channel.raid", { from_broadcaster_user_id: "5", from_broadcaster_user_login: "otro", from_broadcaster_user_name: "Otro", viewers: 42 }))!;
+    const r = mapNotification(
+      note("channel.raid", {
+        from_broadcaster_user_id: "5",
+        from_broadcaster_user_login: "otro",
+        from_broadcaster_user_name: "Otro",
+        viewers: 42,
+      }),
+    )!;
     expect(r.payload).toMatchObject({ viewers: 42, fromChannel: "otro" });
     const f = mapNotification(note("channel.follow", { user_id: "2", user_name: "B", followed_at: "2026-01-01T00:00:00Z" }))!;
     expect(f.type).toBe("follow");
@@ -77,16 +96,37 @@ describe("Helix", () => {
           return new Response(JSON.stringify({ data: [{ id: `sub_${body.type}` }] }), { status: 202 });
         },
       });
-    const r = await subscribeAll(mk((t) => (t === "channel.cheer" ? 403 : t === "channel.raid" ? 409 : null)), "t", { method: "websocket", session_id: "s" }, "b1", ["user:read:chat"]);
+    const r = await subscribeAll(
+      mk((t) => (t === "channel.cheer" ? 403 : t === "channel.raid" ? 409 : null)),
+      "t",
+      { method: "websocket", session_id: "s" },
+      "b1",
+      ["user:read:chat"],
+    );
     expect(created).toContain("channel.chat.message");
     expect(created).not.toContain("channel.follow"); // falta alcance
     expect(r.skipped.map((s) => s.type)).toEqual(expect.arrayContaining(["channel.follow", "channel.subscribe", "channel.cheer"]));
-    await expect(subscribeAll(mk((t) => (t === "stream.online" ? 500 : null)), "t", {}, "b1", [])).rejects.toBeInstanceOf(HelixError);
+    await expect(
+      subscribeAll(
+        mk((t) => (t === "stream.online" ? 500 : null)),
+        "t",
+        {},
+        "b1",
+        [],
+      ),
+    ).rejects.toBeInstanceOf(HelixError);
   });
 });
 
 // --- Adaptador con transporte y Helix falsos ---------------------------------
-const creds: TwitchCredentials = { accessToken: "at", refreshToken: "rt", expiresAt: Date.now() + 3_600_000, scopes: ["user:read:chat"], userId: "77", login: "streamer" };
+const creds: TwitchCredentials = {
+  accessToken: "at",
+  refreshToken: "rt",
+  expiresAt: Date.now() + 3_600_000,
+  scopes: ["user:read:chat"],
+  userId: "77",
+  login: "streamer",
+};
 
 function setup(over: { streams?: () => any[]; attachError?: Error; ensure?: () => Promise<TwitchCredentials> } = {}) {
   const events: NormalizedEvent[] = [];
@@ -113,8 +153,19 @@ function setup(over: { streams?: () => any[]; attachError?: Error; ensure?: () =
     tokens: { ensureFresh: over.ensure ?? (async (_id, c) => c) },
     appToken: async () => "app",
     pollMs: 30,
-  })({ tenantId: "t1", platform: "twitch", channelId: "streamer", connectionId: "c1", credentials: creds as any }, { onEvent: (e) => events.push(e), onStatus: (s) => statuses.push(s) });
-  return { adapter, events, statuses, calls, fire: (n: any) => listener.onNotification(n), listener: () => listener, detached: () => detached };
+  })(
+    { tenantId: "t1", platform: "twitch", channelId: "streamer", connectionId: "c1", credentials: creds as any },
+    { onEvent: (e) => events.push(e), onStatus: (s) => statuses.push(s) },
+  );
+  return {
+    adapter,
+    events,
+    statuses,
+    calls,
+    fire: (n: any) => listener.onNotification(n),
+    listener: () => listener,
+    detached: () => detached,
+  };
 }
 
 describe("adaptador de Twitch", () => {
@@ -143,7 +194,9 @@ describe("adaptador de Twitch", () => {
     await s.fire(note("stream.online", {}, "o1"));
     await sleep(10);
     expect(s.statuses.at(-1)?.status).toBe("live");
-    await s.fire(note("channel.chat.message", { message_id: "c1", chatter_user_id: "1", chatter_user_name: "X", message: { text: "yo" } }, "n2"));
+    await s.fire(
+      note("channel.chat.message", { message_id: "c1", chatter_user_id: "1", chatter_user_name: "X", message: { text: "yo" } }, "n2"),
+    );
     expect(s.events.some((e) => e.type === "chat")).toBe(true);
     live = false;
     await s.fire(note("stream.offline", {}, "o2"));
@@ -174,7 +227,11 @@ describe("adaptador de Twitch", () => {
   });
 
   test("sin credenciales o con autorización inválida: error sin lanzar", async () => {
-    const a = setup({ ensure: async () => { throw new Error("refresh falló"); } });
+    const a = setup({
+      ensure: async () => {
+        throw new Error("refresh falló");
+      },
+    });
     await a.adapter.connect();
     expect(a.statuses.at(-1)?.status).toBe("error");
     const b = setup({ attachError: new HelixError(401, null, "Helix 401") });
@@ -248,7 +305,10 @@ describe("transporte EventSub por WebSocket", () => {
     FakeWs.last.push("session_welcome", { session: { id: "SESS", keepalive_timeout_seconds: 10 } });
     const att = await p;
     expect(subs.every((s) => s.transport.session_id === "SESS" && s.transport.method === "websocket")).toBe(true);
-    const dup = { metadata: { message_id: "dup", message_type: "notification", subscription_type: "channel.raid", subscription_version: "1" }, payload: { event: { viewers: 1 } } };
+    const dup = {
+      metadata: { message_id: "dup", message_type: "notification", subscription_type: "channel.raid", subscription_version: "1" },
+      payload: { event: { viewers: 1 } },
+    };
     FakeWs.last.onmessage!({ data: JSON.stringify(dup) });
     FakeWs.last.onmessage!({ data: JSON.stringify(dup) });
     expect(got).toEqual(["channel.raid:dup"]);
@@ -262,7 +322,12 @@ describe("transporte EventSub por WebSocket", () => {
     const { helix } = helixOk();
     const t = createWebSocketTransport({ helix, WebSocketImpl: FakeWs as never });
     const events: string[] = [];
-    const p = t.attach({ broadcasterId: "77", userToken: async () => "ut", scopes: [], listener: { onNotification: () => {}, onClosed: (r) => events.push(r), onRevoked: () => {} } });
+    const p = t.attach({
+      broadcasterId: "77",
+      userToken: async () => "ut",
+      scopes: [],
+      listener: { onNotification: () => {}, onClosed: (r) => events.push(r), onRevoked: () => {} },
+    });
     await sleep(5);
     const first = FakeWs.last;
     first.push("session_welcome", { session: { id: "S1", keepalive_timeout_seconds: 10 } });
@@ -280,10 +345,22 @@ describe("transporte EventSub por WebSocket", () => {
     FakeWs.all = [];
     const { helix } = helixOk();
     const t = createWebSocketTransport({ helix, WebSocketImpl: FakeWs as never, welcomeTimeoutMs: 30 });
-    await expect(t.attach({ broadcasterId: "1", userToken: async () => "u", scopes: [], listener: { onNotification: () => {}, onClosed: () => {}, onRevoked: () => {} } })).rejects.toThrow("session_welcome");
+    await expect(
+      t.attach({
+        broadcasterId: "1",
+        userToken: async () => "u",
+        scopes: [],
+        listener: { onNotification: () => {}, onClosed: () => {}, onRevoked: () => {} },
+      }),
+    ).rejects.toThrow("session_welcome");
 
     const closed: string[] = [];
-    const p = t.attach({ broadcasterId: "1", userToken: async () => "u", scopes: [], listener: { onNotification: () => {}, onClosed: (r) => closed.push(r), onRevoked: () => {} } });
+    const p = t.attach({
+      broadcasterId: "1",
+      userToken: async () => "u",
+      scopes: [],
+      listener: { onNotification: () => {}, onClosed: (r) => closed.push(r), onRevoked: () => {} },
+    });
     await sleep(5);
     FakeWs.last.push("session_welcome", { session: { id: "S" } });
     await p;

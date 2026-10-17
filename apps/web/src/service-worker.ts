@@ -11,7 +11,12 @@ const CACHE = `hivemonitor-${version}`;
 const ASSETS = [...immutable.map((f) => f.path), ...assets.map((f) => f.path), "/"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(ASSETS))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -27,7 +32,14 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
   // Nunca se interceptan la API, SSE ni WebSocket: siempre red
-  if (req.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/") || url.pathname === "/healthz" || url.pathname === "/readyz") return;
+  if (
+    req.method !== "GET" ||
+    url.origin !== location.origin ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname === "/healthz" ||
+    url.pathname === "/readyz"
+  )
+    return;
 
   // Navegaciones: la app es una SPA, se sirve el shell cacheado si no hay red
   if (req.mode === "navigate") {

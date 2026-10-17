@@ -49,7 +49,12 @@ export function createLogger(config: Pick<Config, "LOG_LEVEL" | "NODE_ENV">): Lo
           const [first, second] = args as unknown as [unknown, unknown];
           const msg = typeof first === "string" ? first : typeof second === "string" ? second : "error";
           const err = (first as { err?: { message?: string } } | undefined)?.err;
-          recentErrors.push({ at: new Date().toISOString(), level: level >= 60 ? "fatal" : "error", msg: msg.slice(0, 200), detail: typeof err?.message === "string" ? err.message.slice(0, 300) : undefined });
+          recentErrors.push({
+            at: new Date().toISOString(),
+            level: level >= 60 ? "fatal" : "error",
+            msg: msg.slice(0, 200),
+            detail: typeof err?.message === "string" ? err.message.slice(0, 300) : undefined,
+          });
           if (recentErrors.length > MAX_ERRORS) recentErrors.shift();
         }
         return method.apply(this, args);

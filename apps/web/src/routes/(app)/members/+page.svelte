@@ -43,7 +43,8 @@
       info = ok;
       await load();
     } catch (err) {
-      error = err instanceof ApiError ? String((err.body as { message?: string } | null)?.message ?? t("members.failed")) : t("members.failed");
+      error =
+        err instanceof ApiError ? String((err.body as { message?: string } | null)?.message ?? t("members.failed")) : t("members.failed");
     }
   }
 
@@ -82,16 +83,31 @@
     {#each members as m (m.id)}
       <div class="flex flex-wrap items-center gap-3 p-4">
         <div class="min-w-0 flex-1">
-          <p class="truncate font-medium">{m.name}{#if m.userId === myId}<span class="ml-2 text-xs text-fg-3">({t("members.you")})</span>{/if}</p>
+          <p class="truncate font-medium">
+            {m.name}{#if m.userId === myId}<span class="ml-2 text-xs text-fg-3">({t("members.you")})</span>{/if}
+          </p>
           <p class="truncate text-xs text-fg-3">{m.email}</p>
         </div>
         {#if canEdit(m)}
-          <select class="input !w-auto" value={m.role} aria-label={t("members.role")} onchange={(e) => run(() => app.client.orgs.updateRole(orgId, m.id, e.currentTarget.value))}>
+          <select
+            class="input !w-auto"
+            value={m.role}
+            aria-label={t("members.role")}
+            onchange={(e) => run(() => app.client.orgs.updateRole(orgId, m.id, e.currentTarget.value))}
+          >
             {#each ASSIGNABLE as r (r)}<option value={r}>{roleLabel(r)}</option>{/each}
           </select>
-          <button class="btn" onclick={() => confirm(t("members.confirmRemove", { name: m.name })) && run(() => app.client.orgs.removeMember(orgId, m.id))}>{t("members.remove")}</button>
+          <button
+            class="btn"
+            onclick={() => confirm(t("members.confirmRemove", { name: m.name })) && run(() => app.client.orgs.removeMember(orgId, m.id))}
+            >{t("members.remove")}</button
+          >
           {#if isOwner}
-            <button class="btn" onclick={() => confirm(t("members.transferConfirm", { name: m.name })) && run(() => api!.members.transferOwnership(m.id))}>{t("members.transfer")}</button>
+            <button
+              class="btn"
+              onclick={() => confirm(t("members.transferConfirm", { name: m.name })) && run(() => api!.members.transferOwnership(m.id))}
+              >{t("members.transfer")}</button
+            >
           {/if}
         {:else}
           <span class="rounded-full border border-border px-3 py-1 text-xs text-fg-2">{roleLabel(m.role)}</span>
@@ -107,7 +123,9 @@
     </div>
     <div>
       <label class="mb-1 block text-sm font-medium" for="inv-role">{t("members.role")}</label>
-      <select id="inv-role" class="input" bind:value={role}>{#each ASSIGNABLE as r (r)}<option value={r}>{roleLabel(r)}</option>{/each}</select>
+      <select id="inv-role" class="input" bind:value={role}
+        >{#each ASSIGNABLE as r (r)}<option value={r}>{roleLabel(r)}</option>{/each}</select
+      >
     </div>
     <button class="btn btn-primary" disabled={busy || !email}>{t("members.invite")}</button>
   </form>
@@ -117,7 +135,10 @@
       <h2 class="px-4 py-3 font-medium">{t("members.pending")}</h2>
       {#each invitations as i (i.id)}
         <div class="flex flex-wrap items-center gap-3 p-4">
-          <div class="min-w-0 flex-1"><p class="truncate text-sm font-medium">{i.email}</p><p class="text-xs text-fg-3">{roleLabel(i.role ?? "")} · {fmtDateTime(i.expiresAt)}</p></div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium">{i.email}</p>
+            <p class="text-xs text-fg-3">{roleLabel(i.role ?? "")} · {fmtDateTime(i.expiresAt)}</p>
+          </div>
           <button class="btn" onclick={() => copy(i.link)}>{t("members.copyLink")}</button>
           <button class="btn" onclick={() => run(() => app.client.orgs.cancelInvitation(i.id))}>{t("members.cancelInvite")}</button>
         </div>
@@ -131,7 +152,11 @@
       <div class="flex items-center gap-3 px-4 py-2 text-sm">
         <span class="w-28 shrink-0 text-xs text-fg-3 tabular-nums">{fmtDateTime(a.at)}</span>
         <code class="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-xs">{a.action}</code>
-        <span class="min-w-0 flex-1 truncate text-xs text-fg-3">{Object.entries(a.meta ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ")}</span>
+        <span class="min-w-0 flex-1 truncate text-xs text-fg-3"
+          >{Object.entries(a.meta ?? {})
+            .map(([k, v]) => `${k}=${v}`)
+            .join(" · ")}</span
+        >
       </div>
     {/each}
   </section>

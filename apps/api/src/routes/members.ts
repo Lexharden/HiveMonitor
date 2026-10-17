@@ -17,13 +17,26 @@ export function memberRoutes(deps: AppDeps) {
   r.get("/members", requireTenant(deps, "members.manage"), async (c) => {
     const { tenantId } = c.get("tenant");
     const members = await deps.adminDb
-      .select({ id: schema.member.id, userId: schema.member.userId, role: schema.member.role, createdAt: schema.member.createdAt, name: schema.user.name, email: schema.user.email })
+      .select({
+        id: schema.member.id,
+        userId: schema.member.userId,
+        role: schema.member.role,
+        createdAt: schema.member.createdAt,
+        name: schema.user.name,
+        email: schema.user.email,
+      })
       .from(schema.member)
       .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
       .where(eq(schema.member.organizationId, tenantId))
       .orderBy(schema.member.createdAt);
     const invitations = await deps.adminDb
-      .select({ id: schema.invitation.id, email: schema.invitation.email, role: schema.invitation.role, expiresAt: schema.invitation.expiresAt, createdAt: schema.invitation.createdAt })
+      .select({
+        id: schema.invitation.id,
+        email: schema.invitation.email,
+        role: schema.invitation.role,
+        expiresAt: schema.invitation.expiresAt,
+        createdAt: schema.invitation.createdAt,
+      })
       .from(schema.invitation)
       .where(and(eq(schema.invitation.organizationId, tenantId), eq(schema.invitation.status, "pending")));
     const now = Date.now();
@@ -44,10 +57,16 @@ export function memberRoutes(deps: AppDeps) {
     if (!body.success) return c.json({ error: "invalid_body" }, 400);
 
     const result = await deps.adminDb.transaction(async (tx) => {
-      const [target] = await tx.select().from(schema.member).where(and(eq(schema.member.id, body.data.memberId), eq(schema.member.organizationId, t.tenantId)));
+      const [target] = await tx
+        .select()
+        .from(schema.member)
+        .where(and(eq(schema.member.id, body.data.memberId), eq(schema.member.organizationId, t.tenantId)));
       if (!target) return "not_found" as const;
       if (target.userId === t.userId) return "same_user" as const;
-      const [me] = await tx.select().from(schema.member).where(and(eq(schema.member.userId, t.userId), eq(schema.member.organizationId, t.tenantId)));
+      const [me] = await tx
+        .select()
+        .from(schema.member)
+        .where(and(eq(schema.member.userId, t.userId), eq(schema.member.organizationId, t.tenantId)));
       if (!me || me.role !== "owner") return "not_owner" as const; // un superadmin no se convierte en propietario por esta vía
       await tx.update(schema.member).set({ role: "owner" }).where(eq(schema.member.id, target.id));
       await tx.update(schema.member).set({ role: "admin" }).where(eq(schema.member.id, me.id));
@@ -55,7 +74,14 @@ export function memberRoutes(deps: AppDeps) {
     });
     if (result === "not_found") return c.json({ error: "not_found" }, 404);
     if (result === "same_user" || result === "not_owner") return c.json({ error: result }, 400);
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "org.transfer_ownership", target: body.data.memberId, meta: { toUser: result.to }, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "org.transfer_ownership",
+      target: body.data.memberId,
+      meta: { toUser: result.to },
+      ip: c.get("ip"),
+    });
     return c.json({ ok: true });
   });
 

@@ -44,7 +44,9 @@ export const session = pgTable("session", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
   activeOrganizationId: text("active_organization_id"),
 });
 
@@ -52,7 +54,9 @@ export const account = pgTable("account", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
@@ -86,8 +90,12 @@ export const member = pgTable(
   "member",
   {
     id: text("id").primaryKey(),
-    organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
-    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
@@ -96,20 +104,29 @@ export const member = pgTable(
 
 export const invitation = pgTable("invitation", {
   id: text("id").primaryKey(),
-  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
   role: text("role"),
   status: text("status").notNull().default("pending"),
   expiresAt: ts("expires_at").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
-  inviterId: text("inviter_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  inviterId: text("inviter_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
 });
 
 // --- Dominio (con RLS por tenant_id) ---------------------------------------
-const tenantId = () => text("tenant_id").notNull().references(() => organization.id, { onDelete: "cascade" });
+const tenantId = () =>
+  text("tenant_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" });
 
 export const tenantSettings = pgTable("tenant_settings", {
-  tenantId: text("tenant_id").primaryKey().references(() => organization.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
   suspended: boolean("suspended").notNull().default(false),
   limits: jsonb("limits").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: ts("created_at").notNull().defaultNow(),
@@ -122,7 +139,10 @@ export const roleDefinition = pgTable(
     tenantId: tenantId(),
     key: text("key").notNull(),
     name: text("name").notNull(),
-    permissions: text("permissions").array().notNull().default(sql`'{}'`),
+    permissions: text("permissions")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.tenantId, t.key)],
@@ -212,7 +232,10 @@ export const alertRule = pgTable("alert_rule", {
   type: text("type").notNull(),
   name: text("name").notNull(),
   params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
-  channels: text("channels").array().notNull().default(sql`'{panel}'`),
+  channels: text("channels")
+    .array()
+    .notNull()
+    .default(sql`'{panel}'`),
   webhookUrlEnc: bytea("webhook_url_enc"),
   enabled: boolean("enabled").notNull().default(true),
   createdAt: ts("created_at").notNull().defaultNow(),

@@ -1,7 +1,15 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { t } from "#lib/i18n.ts";
-  import { autostartEnabled, autostartSupported, notify, notifyState, requestNotify, setAutostart, type NotifyState } from "#lib/platform.ts";
+  import {
+    autostartEnabled,
+    autostartSupported,
+    notify,
+    notifyState,
+    requestNotify,
+    setAutostart,
+    type NotifyState,
+  } from "#lib/platform.ts";
   import { app } from "#lib/stores/app.svelte.ts";
   import { onMount } from "svelte";
 
@@ -45,12 +53,25 @@
 
 <div class="grid max-w-2xl gap-4">
   <section class="card flex items-center justify-between gap-4 p-4">
-    <div><h2 class="font-medium">{t("set.appearance")}</h2><p class="text-sm text-fg-3">{t("set.theme")}</p></div>
-    <input type="checkbox" class="size-5 accent-[var(--accent)]" role="switch" checked={app.theme === "dark"} onchange={() => app.toggleTheme()} aria-label={t("set.theme")} />
+    <div>
+      <h2 class="font-medium">{t("set.appearance")}</h2>
+      <p class="text-sm text-fg-3">{t("set.theme")}</p>
+    </div>
+    <input
+      type="checkbox"
+      class="size-5 accent-[var(--accent)]"
+      role="switch"
+      checked={app.theme === "dark"}
+      onchange={() => app.toggleTheme()}
+      aria-label={t("set.theme")}
+    />
   </section>
 
   <section class="card flex items-center justify-between gap-4 p-4">
-    <div><h2 class="font-medium">{t("set.notifications")}</h2><p class="text-sm text-fg-3">{t("set.notificationsHint")}</p></div>
+    <div>
+      <h2 class="font-medium">{t("set.notifications")}</h2>
+      <p class="text-sm text-fg-3">{t("set.notificationsHint")}</p>
+    </div>
     {#if perm === "granted"}<span class="text-sm text-good">✓ {t("set.granted")}</span>
     {:else if perm === "denied"}<span class="text-sm text-bad">{t("set.denied")}</span>
     {:else if perm === "unsupported"}<span class="text-sm text-fg-3">{t("set.unsupported")}</span>
@@ -59,14 +80,27 @@
 
   {#if canAutostart}
     <section class="card flex items-center justify-between gap-4 p-4">
-      <div><h2 class="font-medium">{t("set.autostart")}</h2><p class="text-sm text-fg-3">{t("set.autostartHint")}</p></div>
-      <input type="checkbox" class="size-5 accent-[var(--accent)]" role="switch" checked={autostart} onchange={(e) => toggleAutostart(e.currentTarget.checked)} aria-label={t("set.autostart")} />
+      <div>
+        <h2 class="font-medium">{t("set.autostart")}</h2>
+        <p class="text-sm text-fg-3">{t("set.autostartHint")}</p>
+      </div>
+      <input
+        type="checkbox"
+        class="size-5 accent-[var(--accent)]"
+        role="switch"
+        checked={autostart}
+        onchange={(e) => toggleAutostart(e.currentTarget.checked)}
+        aria-label={t("set.autostart")}
+      />
     </section>
   {/if}
 
   {#if app.native}
     <section class="card flex items-center justify-between gap-4 p-4">
-      <div class="min-w-0"><h2 class="font-medium">{t("set.server")}</h2><p class="truncate text-sm text-fg-3">{app.serverUrl}</p></div>
+      <div class="min-w-0">
+        <h2 class="font-medium">{t("set.server")}</h2>
+        <p class="truncate text-sm text-fg-3">{app.serverUrl}</p>
+      </div>
       <button class="btn" onclick={changeServer}>{t("common.signOut")}</button>
     </section>
   {/if}

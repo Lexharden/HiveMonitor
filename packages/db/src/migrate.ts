@@ -7,6 +7,8 @@ export const MIGRATIONS_DIR = join(import.meta.dir, "..", "migrations");
 
 export interface MigrateOptions {
   dir?: string;
+  /** Migraciones ya cargadas en memoria (binario compilado); si se dan, no se lee el disco. */
+  files?: { name: string; sql: string }[];
   /** Contraseña a asignar al rol hive_app tras migrar (si se da). */
   appRolePassword?: string;
   log?: (msg: string) => void;
@@ -26,10 +28,18 @@ export async function migrate(url: string, opts: MigrateOptions = {}): Promise<s
     await sql`select pg_advisory_lock(727274)`;
     await sql`create table if not exists _migrations (
       name text primary key, checksum text not null, applied_at timestamptz not null default now())`;
-    const done = new Map((await sql<{ name: string; checksum: string }[]>`select name, checksum from _migrations`).map((r) => [r.name, r.checksum]));
-    const files = (await readdir(dir)).filter((f) => /^\d{4}_.+\.sql$/.test(f)).sort();
-    for (const file of files) {
-      const text = await readFile(join(dir, file), "utf8");
+    const done = new Map(
+      (await sql<{ name: string; checksum: string }[]>`select name, checksum from _migrations`).map((r) => [r.name, r.checksum]),
+    );
+    const list: { name: string; sql: string }[] = opts.files
+      ? [...opts.files].sort((a, b) => a.name.localeCompare(b.name))
+      : await Promise.all(
+          (await readdir(dir))
+            .filter((f) => /^\d{4}_.+\.sql$/.test(f))
+            .sort()
+            .map(async (f) => ({ name: f, sql: await readFile(join(dir, f), "utf8") })),
+        );
+    for (const { name: file, sql: text } of list) {
       const checksum = createHash("sha256").update(text).digest("hex");
       const prev = done.get(file);
       if (prev) {

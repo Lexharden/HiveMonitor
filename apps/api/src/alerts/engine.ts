@@ -85,7 +85,14 @@ export class AlertEngine {
     if (!p) {
       p = withTenant(this.o.appDb, tenantId, (tx) => tx.select().from(schema.alertRule).where(eq(schema.alertRule.enabled, true)))
         .then((rows) => {
-          const rules = rows.map((r) => ({ id: r.id, type: r.type as AlertType, name: r.name, params: r.params, channels: r.channels, webhookUrlEnc: r.webhookUrlEnc }));
+          const rules = rows.map((r) => ({
+            id: r.id,
+            type: r.type as AlertType,
+            name: r.name,
+            params: r.params,
+            channels: r.channels,
+            webhookUrlEnc: r.webhookUrlEnc,
+          }));
           this.cache.set(tenantId, { at: this.now(), rules });
           return rules;
         })
@@ -114,7 +121,12 @@ export class AlertEngine {
         for (const r of rules.filter((x) => x.type === "donation_over")) {
           if (usd >= r.params.thresholdUsd * 100 && this.cooldownOk(`${r.id}|${e.channelId}`, r.params.cooldownSec ?? 5)) {
             const who = e.actor?.name ?? "Alguien";
-            await this.fire(e.tenantId, r, `${who} envió una donación de ≈ $${(usd / 100).toFixed(2)} en ${e.platform}`, { platform: e.platform, channelId: e.channelId, usdMinor: usd, actor: e.actor?.name ?? null });
+            await this.fire(e.tenantId, r, `${who} envió una donación de ≈ $${(usd / 100).toFixed(2)} en ${e.platform}`, {
+              platform: e.platform,
+              channelId: e.channelId,
+              usdMinor: usd,
+              actor: e.actor?.name ?? null,
+            });
           }
         }
       } else {
@@ -147,12 +159,17 @@ export class AlertEngine {
       if (peak < r.params.minViewers) continue;
       const drop = ((peak - e.payload.viewers) / peak) * 100;
       if (drop >= r.params.dropPercent && this.cooldownOk(`${r.id}|${key}`, r.params.cooldownSec ?? 900)) {
-        await this.fire(e.tenantId, r, `Los espectadores de ${e.channelId} (${e.platform}) cayeron un ${Math.round(drop)}%: de ${peak} a ${e.payload.viewers}`, {
-          platform: e.platform,
-          channelId: e.channelId,
-          from: peak,
-          to: e.payload.viewers,
-        });
+        await this.fire(
+          e.tenantId,
+          r,
+          `Los espectadores de ${e.channelId} (${e.platform}) cayeron un ${Math.round(drop)}%: de ${peak} a ${e.payload.viewers}`,
+          {
+            platform: e.platform,
+            channelId: e.channelId,
+            from: peak,
+            to: e.payload.viewers,
+          },
+        );
       }
     }
   }
@@ -171,14 +188,19 @@ export class AlertEngine {
       const rules = (await this.rules(spec.tenantId)).filter((r) => r.type === "platform_disconnect");
       for (const r of rules) {
         if (this.graceTimers.has(key)) continue;
-        const timer = setTimeout(() => {
-          this.graceTimers.delete(key);
-          if (this.cooldownOk(`${r.id}|${spec.id}`, r.params.cooldownSec ?? 300)) {
-            void this.fire(spec.tenantId, r, `${spec.channelId} (${spec.platform}) perdió la conexión`, { platform: spec.platform, channelId: spec.channelId, status }).catch((err) =>
-              this.o.logger.error({ err }, "falló el envío de la alerta"),
-            );
-          }
-        }, (r.params.graceSec ?? 30) * 1000);
+        const timer = setTimeout(
+          () => {
+            this.graceTimers.delete(key);
+            if (this.cooldownOk(`${r.id}|${spec.id}`, r.params.cooldownSec ?? 300)) {
+              void this.fire(spec.tenantId, r, `${spec.channelId} (${spec.platform}) perdió la conexión`, {
+                platform: spec.platform,
+                channelId: spec.channelId,
+                status,
+              }).catch((err) => this.o.logger.error({ err }, "falló el envío de la alerta"));
+            }
+          },
+          (r.params.graceSec ?? 30) * 1000,
+        );
         timer.unref?.();
         this.graceTimers.set(key, timer);
       }
@@ -196,18 +218,28 @@ export class AlertEngine {
     for (const [key, hb] of this.heartbeats) {
       if (hb.alerted) continue;
       const [tenantId, source] = [key.slice(0, key.indexOf("|")), key.slice(key.indexOf("|") + 1)];
-      const rules = (await this.rules(tenantId)).filter((r) => r.type === "heartbeat_lost" && (!r.params.source || r.params.source === source));
+      const rules = (await this.rules(tenantId)).filter(
+        (r) => r.type === "heartbeat_lost" && (!r.params.source || r.params.source === source),
+      );
       for (const r of rules) {
         if (this.now() - hb.at > r.params.afterSec * 1000 && this.cooldownOk(`${r.id}|${source}`, r.params.cooldownSec ?? 600)) {
           hb.alerted = true; // una sola vez por silencio; se rearma con el siguiente latido
-          await this.fire(tenantId, r, `Sin señal de «${source}» desde hace más de ${r.params.afterSec} s`, { source, lastSeen: new Date(hb.at).toISOString() });
+          await this.fire(tenantId, r, `Sin señal de «${source}» desde hace más de ${r.params.afterSec} s`, {
+            source,
+            lastSeen: new Date(hb.at).toISOString(),
+          });
         }
       }
     }
   }
 
   // --- Entrega ------------------------------------------------------------------------
-  async fire(tenantId: string, rule: Pick<Rule, "id" | "type" | "name" | "channels" | "webhookUrlEnc">, message: string, data: Record<string, unknown>): Promise<AlertPayload> {
+  async fire(
+    tenantId: string,
+    rule: Pick<Rule, "id" | "type" | "name" | "channels" | "webhookUrlEnc">,
+    message: string,
+    data: Record<string, unknown>,
+  ): Promise<AlertPayload> {
     const alert: AlertPayload = {
       id: crypto.randomUUID(),
       ruleId: rule.id,
@@ -219,13 +251,22 @@ export class AlertEngine {
       data,
     };
     await withTenant(this.o.appDb, tenantId, (tx) =>
-      tx.insert(schema.alertEvent).values({ id: alert.id, tenantId, ruleId: rule.id, data: { message, type: rule.type, ruleName: rule.name, channels: rule.channels, ...data } }),
+      tx
+        .insert(schema.alertEvent)
+        .values({
+          id: alert.id,
+          tenantId,
+          ruleId: rule.id,
+          data: { message, type: rule.type, ruleName: rule.name, channels: rule.channels, ...data },
+        }),
     );
     if (rule.channels.includes("panel") || rule.channels.includes("native")) {
       void this.o.bus.publish({ kind: "alert", tenantId, alert });
     }
     if (rule.channels.includes("webhook") && rule.webhookUrlEnc) {
-      void this.sendDiscord(rule.webhookUrlEnc, alert).catch((err) => this.o.logger.warn({ err: (err as Error).message, rule: rule.id }, "falló el webhook de Discord"));
+      void this.sendDiscord(rule.webhookUrlEnc, alert).catch((err) =>
+        this.o.logger.warn({ err: (err as Error).message, rule: rule.id }, "falló el webhook de Discord"),
+      );
     }
     return alert;
   }
@@ -240,7 +281,14 @@ export class AlertEngine {
       body: JSON.stringify({
         username: "HiveMonitor",
         allowed_mentions: { parse: [] }, // un texto de usuario nunca debe mencionar a @everyone
-        embeds: [{ title: alert.ruleName, description: alert.message.slice(0, 1800), color: alert.type === "donation_over" ? 0x4cc38a : 0xe0a93a, timestamp: alert.at }],
+        embeds: [
+          {
+            title: alert.ruleName,
+            description: alert.message.slice(0, 1800),
+            color: alert.type === "donation_over" ? 0x4cc38a : 0xe0a93a,
+            timestamp: alert.at,
+          },
+        ],
       }),
       signal: AbortSignal.timeout(5000),
       redirect: "error",

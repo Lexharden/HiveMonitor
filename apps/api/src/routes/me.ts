@@ -39,9 +39,7 @@ export function meRoutes(deps: AppDeps) {
     const organizations = await Promise.all(
       rows.map(async (o) => {
         const custom = await withTenant(deps.appDb, o.organizationId, (tx) =>
-          tx
-            .select({ key: schema.roleDefinition.key, permissions: schema.roleDefinition.permissions })
-            .from(schema.roleDefinition),
+          tx.select({ key: schema.roleDefinition.key, permissions: schema.roleDefinition.permissions }).from(schema.roleDefinition),
         );
         return {
           id: o.organizationId,

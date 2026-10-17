@@ -16,7 +16,7 @@ async function all(s: ReadableStream<Uint8Array>) {
 }
 
 test("parsea eventos partidos entre chunks, comentarios y CRLF", async () => {
-  const out = await all(streamOf(': hi\n\nevent: ev', 'ent\nid: 7\ndata: {"a":1}\n\n', 'event: ping\r\ndata: \r\n\r\n'));
+  const out = await all(streamOf(": hi\n\nevent: ev", 'ent\nid: 7\ndata: {"a":1}\n\n', "event: ping\r\ndata: \r\n\r\n"));
   expect(out).toEqual([
     { event: "event", data: { a: 1 }, id: "7" },
     { event: "ping", data: "", id: undefined },

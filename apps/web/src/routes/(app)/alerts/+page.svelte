@@ -20,7 +20,15 @@
   let name = $state("");
   let channels = $state<string[]>(["panel"]);
   let webhookUrl = $state("");
-  let p = $state<Record<string, string>>({ thresholdUsd: "10", dropPercent: "50", windowMin: "10", minViewers: "20", graceSec: "30", source: "", afterSec: "120" });
+  let p = $state<Record<string, string>>({
+    thresholdUsd: "10",
+    dropPercent: "50",
+    windowMin: "10",
+    minViewers: "20",
+    graceSec: "30",
+    source: "",
+    afterSec: "120",
+  });
 
   const api = $derived(app.org ? app.client.tenant(app.org.id).alerts : null);
   const allowed = $derived(app.can("alerts.manage"));
@@ -62,7 +70,13 @@
     error = info = "";
     busy = true;
     try {
-      await api.create({ type, name: name.trim() || t(`alerts.type.${type}` as MessageKey), params: paramsFor(type), channels, webhookUrl: channels.includes("webhook") ? webhookUrl : null });
+      await api.create({
+        type,
+        name: name.trim() || t(`alerts.type.${type}` as MessageKey),
+        params: paramsFor(type),
+        channels,
+        webhookUrl: channels.includes("webhook") ? webhookUrl : null,
+      });
       name = webhookUrl = "";
       await load();
     } catch (err) {
@@ -112,11 +126,18 @@
           <p class="mt-1 text-xs text-fg-2">{r.channels.map((c) => t(`alerts.channel.${c}` as MessageKey)).join(" · ")}</p>
         </div>
         <label class="flex items-center gap-2 text-sm text-fg-2">
-          <input type="checkbox" class="size-4 accent-[var(--accent)]" checked={r.enabled} onchange={(e) => act(() => api!.update(r.id, { enabled: e.currentTarget.checked }))} />
+          <input
+            type="checkbox"
+            class="size-4 accent-[var(--accent)]"
+            checked={r.enabled}
+            onchange={(e) => act(() => api!.update(r.id, { enabled: e.currentTarget.checked }))}
+          />
           {t("alerts.enabled")}
         </label>
         <button class="btn" onclick={() => act(() => api!.test(r.id), t("alerts.testSent"))}>{t("alerts.test")}</button>
-        <button class="btn" aria-label={t("common.delete")} onclick={() => confirm(t("int.confirmDelete")) && act(() => api!.remove(r.id))}><Icon name="trash" class="size-4" /></button>
+        <button class="btn" aria-label={t("common.delete")} onclick={() => confirm(t("int.confirmDelete")) && act(() => api!.remove(r.id))}
+          ><Icon name="trash" class="size-4" /></button
+        >
       </div>
     {/each}
   </section>
@@ -135,23 +156,97 @@
     </div>
 
     {#if type === "donation_over"}
-      <div><label class="mb-1 block text-sm font-medium" for="p1">{t("alerts.threshold")}</label><input id="p1" class="input" type="number" min="0.01" step="any" required bind:value={p.thresholdUsd} /></div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p1">{t("alerts.threshold")}</label><input
+          id="p1"
+          class="input"
+          type="number"
+          min="0.01"
+          step="any"
+          required
+          bind:value={p.thresholdUsd}
+        />
+      </div>
     {:else if type === "viewers_drop"}
-      <div><label class="mb-1 block text-sm font-medium" for="p2">{t("alerts.dropPercent")}</label><input id="p2" class="input" type="number" min="10" max="95" required bind:value={p.dropPercent} /></div>
-      <div><label class="mb-1 block text-sm font-medium" for="p3">{t("alerts.windowMin")}</label><input id="p3" class="input" type="number" min="1" max="60" required bind:value={p.windowMin} /></div>
-      <div><label class="mb-1 block text-sm font-medium" for="p4">{t("alerts.minViewers")}</label><input id="p4" class="input" type="number" min="1" required bind:value={p.minViewers} /></div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p2">{t("alerts.dropPercent")}</label><input
+          id="p2"
+          class="input"
+          type="number"
+          min="10"
+          max="95"
+          required
+          bind:value={p.dropPercent}
+        />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p3">{t("alerts.windowMin")}</label><input
+          id="p3"
+          class="input"
+          type="number"
+          min="1"
+          max="60"
+          required
+          bind:value={p.windowMin}
+        />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p4">{t("alerts.minViewers")}</label><input
+          id="p4"
+          class="input"
+          type="number"
+          min="1"
+          required
+          bind:value={p.minViewers}
+        />
+      </div>
     {:else if type === "platform_disconnect"}
-      <div><label class="mb-1 block text-sm font-medium" for="p5">{t("alerts.graceSec")}</label><input id="p5" class="input" type="number" min="0" max="600" required bind:value={p.graceSec} /></div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p5">{t("alerts.graceSec")}</label><input
+          id="p5"
+          class="input"
+          type="number"
+          min="0"
+          max="600"
+          required
+          bind:value={p.graceSec}
+        />
+      </div>
     {:else}
-      <div><label class="mb-1 block text-sm font-medium" for="p6">{t("alerts.source")}</label><input id="p6" class="input" maxlength="64" bind:value={p.source} placeholder="obs" /></div>
-      <div><label class="mb-1 block text-sm font-medium" for="p7">{t("alerts.afterSec")}</label><input id="p7" class="input" type="number" min="30" max="3600" required bind:value={p.afterSec} /></div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p6">{t("alerts.source")}</label><input
+          id="p6"
+          class="input"
+          maxlength="64"
+          bind:value={p.source}
+          placeholder="obs"
+        />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="p7">{t("alerts.afterSec")}</label><input
+          id="p7"
+          class="input"
+          type="number"
+          min="30"
+          max="3600"
+          required
+          bind:value={p.afterSec}
+        />
+      </div>
     {/if}
 
     <fieldset class="sm:col-span-2">
       <legend class="mb-2 text-sm font-medium">{t("alerts.channels")}</legend>
       <div class="flex flex-wrap gap-4">
         {#each CHANNELS as c (c)}
-          <label class="flex items-center gap-2 text-sm text-fg-2"><input type="checkbox" class="size-4 accent-[var(--accent)]" checked={channels.includes(c)} onchange={() => toggleChannel(c)} />{t(`alerts.channel.${c}` as MessageKey)}</label>
+          <label class="flex items-center gap-2 text-sm text-fg-2"
+            ><input
+              type="checkbox"
+              class="size-4 accent-[var(--accent)]"
+              checked={channels.includes(c)}
+              onchange={() => toggleChannel(c)}
+            />{t(`alerts.channel.${c}` as MessageKey)}</label
+          >
         {/each}
       </div>
     </fieldset>
@@ -159,11 +254,21 @@
     {#if channels.includes("webhook")}
       <div class="sm:col-span-2">
         <label class="mb-1 block text-sm font-medium" for="a-hook">{t("alerts.webhook")}</label>
-        <input id="a-hook" class="input" type="url" required placeholder="https://discord.com/api/webhooks/…" autocomplete="off" bind:value={webhookUrl} />
+        <input
+          id="a-hook"
+          class="input"
+          type="url"
+          required
+          placeholder="https://discord.com/api/webhooks/…"
+          autocomplete="off"
+          bind:value={webhookUrl}
+        />
         <p class="mt-1 text-xs text-fg-3">{t("alerts.webhookHint")}</p>
       </div>
     {/if}
-    <div class="sm:col-span-2"><button class="btn btn-primary" disabled={busy || channels.length === 0}><Icon name="plus" class="size-4" />{t("alerts.new")}</button></div>
+    <div class="sm:col-span-2">
+      <button class="btn btn-primary" disabled={busy || channels.length === 0}><Icon name="plus" class="size-4" />{t("alerts.new")}</button>
+    </div>
   </form>
 
   <section class="card divide-y divide-border">

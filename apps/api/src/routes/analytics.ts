@@ -73,7 +73,8 @@ export function analyticsRoutes(deps: AppDeps) {
     const alignedPrev = granularity === "day" ? new Date(alignedFrom.getTime() - days * DAY) : prevFrom;
 
     const rows = await withTenant(deps.appDb, tenantId, async (tx) => {
-      const res = await tx.execute(sql`select bucket, platform, viewers_peak, viewers_avg, viewer_samples, donations_minor, messages, new_followers
+      const res =
+        await tx.execute(sql`select bucket, platform, viewers_peak, viewers_avg, viewer_samples, donations_minor, messages, new_followers
         from ${sql.raw(table)}
         where ${granularity === "hour" ? sql`bucket >= ${alignedPrev.toISOString()}::timestamptz and bucket < ${to.toISOString()}::timestamptz` : sql`bucket >= ${alignedPrev.toISOString().slice(0, 10)}::date and bucket <= ${to.toISOString().slice(0, 10)}::date`} ${platform ? sql`and platform = ${platform}` : sql``}
         order by bucket`);
@@ -103,7 +104,11 @@ export function analyticsRoutes(deps: AppDeps) {
 
   r.get("/analytics/sessions", guard, async (c) => {
     const q = z
-      .object({ limit: z.coerce.number().int().min(1).max(100).default(20), before: z.coerce.date().optional(), platform: z.enum(PLATFORMS).optional() })
+      .object({
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        before: z.coerce.date().optional(),
+        platform: z.enum(PLATFORMS).optional(),
+      })
       .safeParse(c.req.query());
     if (!q.success) return c.json({ error: "invalid_query" }, 400);
     const { tenantId } = c.get("tenant");
@@ -111,7 +116,12 @@ export function analyticsRoutes(deps: AppDeps) {
       tx
         .select()
         .from(schema.streamSession)
-        .where(and(q.data.before ? lt(schema.streamSession.startedAt, q.data.before) : undefined, q.data.platform ? eq(schema.streamSession.platform, q.data.platform) : undefined))
+        .where(
+          and(
+            q.data.before ? lt(schema.streamSession.startedAt, q.data.before) : undefined,
+            q.data.platform ? eq(schema.streamSession.platform, q.data.platform) : undefined,
+          ),
+        )
         .orderBy(desc(schema.streamSession.startedAt))
         .limit(q.data.limit),
     );
@@ -143,26 +153,56 @@ export function analyticsRoutes(deps: AppDeps) {
       const lo = new Date(s.startedAt.getTime() - 60_000);
       const hi = new Date((s.endedAt ?? new Date()).getTime() + 60_000);
       const timeline = (await tx.execute(sql`select occurred_at as t, (payload->>'viewers')::int as v from event
-        where session_id = ${sid} and type = 'viewer_count' and occurred_at between ${lo.toISOString()}::timestamptz and ${hi.toISOString()}::timestamptz order by occurred_at`)) as unknown as { t: Date; v: number }[];
+        where session_id = ${sid} and type = 'viewer_count' and occurred_at between ${lo.toISOString()}::timestamptz and ${hi.toISOString()}::timestamptz order by occurred_at`)) as unknown as {
+        t: Date;
+        v: number;
+      }[];
       const byType = (await tx.execute(sql`select type, count(*)::int as n from event
-        where session_id = ${sid} and occurred_at between ${lo.toISOString()}::timestamptz and ${hi.toISOString()}::timestamptz group by type`)) as unknown as { type: string; n: number }[];
-      const donors = (await tx.execute(sql`select actor_id, max(actor_name) as name, currency, sum(amount_minor)::bigint as amount, count(*)::int as n
+        where session_id = ${sid} and occurred_at between ${lo.toISOString()}::timestamptz and ${hi.toISOString()}::timestamptz group by type`)) as unknown as {
+        type: string;
+        n: number;
+      }[];
+      const donors =
+        (await tx.execute(sql`select actor_id, max(actor_name) as name, currency, sum(amount_minor)::bigint as amount, count(*)::int as n
         from event where session_id = ${sid} and type = 'donation' and occurred_at between ${lo.toISOString()}::timestamptz and ${hi.toISOString()}::timestamptz and actor_id is not null
-        group by actor_id, currency order by amount desc limit 10`)) as unknown as { actor_id: string; name: string; currency: string; amount: string; n: number }[];
+        group by actor_id, currency order by amount desc limit 10`)) as unknown as {
+          actor_id: string;
+          name: string;
+          currency: string;
+          amount: string;
+          n: number;
+        }[];
       return { s, timeline, byType, donors };
     });
     if (!data) return c.json({ error: "not_found" }, 404);
     const { s } = data;
     return c.json({
-      session: { id: s.id, platform: s.platform, channelId: s.channelId, title: s.title, startedAt: s.startedAt, endedAt: s.endedAt, peakViewers: s.peakViewers, stats: s.stats },
+      session: {
+        id: s.id,
+        platform: s.platform,
+        channelId: s.channelId,
+        title: s.title,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        peakViewers: s.peakViewers,
+        stats: s.stats,
+      },
       timeline: data.timeline.map((x) => ({ t: new Date(x.t).getTime(), v: x.v })),
       eventsByType: Object.fromEntries(data.byType.map((x) => [x.type, x.n])),
-      topDonors: data.donors.map((d) => ({ id: d.actor_id, name: d.name, currency: d.currency, amountMinor: Number(d.amount), count: d.n })),
+      topDonors: data.donors.map((d) => ({
+        id: d.actor_id,
+        name: d.name,
+        currency: d.currency,
+        amountMinor: Number(d.amount),
+        count: d.n,
+      })),
     });
   });
 
   r.get("/analytics/top-donors", guard, async (c) => {
-    const q = rangeQuery.extend({ days: z.coerce.number().int().min(1).max(365).default(30), limit: z.coerce.number().int().min(1).max(50).default(10) }).safeParse(c.req.query());
+    const q = rangeQuery
+      .extend({ days: z.coerce.number().int().min(1).max(365).default(30), limit: z.coerce.number().int().min(1).max(50).default(10) })
+      .safeParse(c.req.query());
     if (!q.success) return c.json({ error: "invalid_query" }, 400);
     const { tenantId } = c.get("tenant");
     const from = new Date(Date.now() - q.data.days * DAY);
@@ -179,7 +219,14 @@ export function analyticsRoutes(deps: AppDeps) {
     });
     return c.json({
       from: from.toISOString(),
-      donors: rows.map((d) => ({ id: d.actor_id, name: d.name, currency: d.currency, amountMinor: Number(d.amount), usdMinorEstimate: Number(d.usd), count: d.n })),
+      donors: rows.map((d) => ({
+        id: d.actor_id,
+        name: d.name,
+        currency: d.currency,
+        amountMinor: Number(d.amount),
+        usdMinorEstimate: Number(d.usd),
+        count: d.n,
+      })),
     });
   });
 

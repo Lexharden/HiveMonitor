@@ -66,7 +66,14 @@ export function mapNotification(n: EventSubNotification): MappedEvent | null {
         key: n.messageId,
         actor: e.is_anonymous ? null : actor(e.user_id, e.user_name ?? e.user_login),
         // 1 bit = 1 céntimo de USD (precio de compra de referencia)
-        payload: { kind: "bits", amountMinor: bits, currency: "BITS", usdMinorEstimate: bits, count: 1, message: e.message ? String(e.message) : undefined },
+        payload: {
+          kind: "bits",
+          amountMinor: bits,
+          currency: "BITS",
+          usdMinorEstimate: bits,
+          count: 1,
+          message: e.message ? String(e.message) : undefined,
+        },
       };
     }
     case "channel.raid":
@@ -74,7 +81,10 @@ export function mapNotification(n: EventSubNotification): MappedEvent | null {
         type: "raid",
         key: n.messageId,
         actor: actor(e.from_broadcaster_user_id, e.from_broadcaster_user_name ?? e.from_broadcaster_user_login),
-        payload: { viewers: Math.max(0, Math.round(Number(e.viewers) || 0)), fromChannel: e.from_broadcaster_user_login ? String(e.from_broadcaster_user_login) : undefined },
+        payload: {
+          viewers: Math.max(0, Math.round(Number(e.viewers) || 0)),
+          fromChannel: e.from_broadcaster_user_login ? String(e.from_broadcaster_user_login) : undefined,
+        },
       };
     default:
       return null;
@@ -82,5 +92,7 @@ export function mapNotification(n: EventSubNotification): MappedEvent | null {
 }
 
 function tierName(tier: unknown): string | undefined {
-  return ({ "1000": "tier1", "2000": "tier2", "3000": "tier3" } as Record<string, string>)[String(tier)] ?? (tier ? String(tier) : undefined);
+  return (
+    ({ "1000": "tier1", "2000": "tier2", "3000": "tier3" } as Record<string, string>)[String(tier)] ?? (tier ? String(tier) : undefined)
+  );
 }

@@ -1,4 +1,14 @@
-import type { AlertPayload, Client, ConnectionStatus, HeartbeatSource, LiveChannel, NormalizedEvent, Platform, RuntimeConnection, StreamMessage } from "@hivemonitor/client";
+import type {
+  AlertPayload,
+  Client,
+  ConnectionStatus,
+  HeartbeatSource,
+  LiveChannel,
+  NormalizedEvent,
+  Platform,
+  RuntimeConnection,
+  StreamMessage,
+} from "@hivemonitor/client";
 
 export interface ViewerPoint {
   t: number;

@@ -159,7 +159,9 @@ describe("roles y permisos", () => {
     await env.admin.db
       .update(schema.member)
       .set({ role: "viewer-audit" })
-      .where(eq(schema.member.userId, (await env.admin.db.select().from(schema.user).where(eq(schema.user.email, "analyst@test.dev")))[0]!.id));
+      .where(
+        eq(schema.member.userId, (await env.admin.db.select().from(schema.user).where(eq(schema.user.email, "analyst@test.dev")))[0]!.id),
+      );
     expect((await env.call(analystToken, "GET", `/api/t/${orgA}/audit`)).status).toBe(200);
     const me = (await (await env.call(analystToken, "GET", "/api/me")).json()) as {
       organizations: { permissions: string[] }[];

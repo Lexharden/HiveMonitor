@@ -26,7 +26,17 @@ let otherOrg: string;
 const bus: BusMessage[] = [];
 
 const mk = (type: string, payload: object, extra: Partial<NormalizedEvent> = {}, tenantId = org) =>
-  ({ id: crypto.randomUUID(), tenantId, platform: "tiktok", channelId: "chan", type, occurredAt: new Date(), actor: { id: "u1", name: "Ana" }, payload, ...extra }) as unknown as NormalizedEvent;
+  ({
+    id: crypto.randomUUID(),
+    tenantId,
+    platform: "tiktok",
+    channelId: "chan",
+    type,
+    occurredAt: new Date(),
+    actor: { id: "u1", name: "Ana" },
+    payload,
+    ...extra,
+  }) as unknown as NormalizedEvent;
 
 async function invite(role: string, email: string, token: string) {
   const res = await env.call(owner, "POST", "/api/auth/organization/invite-member", { email, role, organizationId: org });
@@ -35,7 +45,14 @@ async function invite(role: string, email: string, token: string) {
   expect((await env.call(token, "POST", "/api/auth/organization/accept-invitation", { invitationId: id })).status).toBe(200);
 }
 const t = (tok: string, method: string, path: string, body?: unknown) => env.call(tok, method, `/api/t/${org}${path}`, body);
-const rule = (over: object = {}) => ({ type: "donation_over", name: "Donación grande", params: { thresholdUsd: 5 }, channels: ["panel", "webhook"], webhookUrl: DISCORD, ...over });
+const rule = (over: object = {}) => ({
+  type: "donation_over",
+  name: "Donación grande",
+  params: { thresholdUsd: 5 },
+  channels: ["panel", "webhook"],
+  webhookUrl: DISCORD,
+  ...over,
+});
 const userId = async (email: string) => (await env.admin.db.select().from(schema.user).where(eq(schema.user.email, email)))[0]!.id;
 
 beforeAll(async () => {
@@ -43,7 +60,9 @@ beforeAll(async () => {
   owner = await env.signUp("o@p7.dev");
   otherOwner = await env.signUp("o2@p7.dev");
   org = ((await (await env.call(owner, "POST", "/api/auth/organization/create", { name: "P7", slug: "p7" })).json()) as { id: string }).id;
-  otherOrg = ((await (await env.call(otherOwner, "POST", "/api/auth/organization/create", { name: "P7b", slug: "p7b" })).json()) as { id: string }).id;
+  otherOrg = (
+    (await (await env.call(otherOwner, "POST", "/api/auth/organization/create", { name: "P7b", slug: "p7b" })).json()) as { id: string }
+  ).id;
   admin = await env.signUp("ad@p7.dev");
   analyst = await env.signUp("an@p7.dev");
   moderator = await env.signUp("mo@p7.dev");
@@ -61,7 +80,17 @@ describe("webhooks de alertas: solo Discord", () => {
   test("lista blanca de URL (anti SSRF)", () => {
     expect(isAllowedWebhookUrl(DISCORD)).toBe(true);
     expect(isAllowedWebhookUrl("https://ptb.discord.com/api/webhooks/1/x")).toBe(true);
-    for (const bad of ["http://discord.com/api/webhooks/1/x", "https://evil.com/api/webhooks/1/x", "https://discord.com.evil.com/api/webhooks/1/x", "https://discord.com@evil.com/api/webhooks/1/x", "https://discord.com:8443/api/webhooks/1/x", "https://discord.com/other", "http://169.254.169.254/latest", "ftp://discord.com/api/webhooks/1/x", "no-es-url"]) {
+    for (const bad of [
+      "http://discord.com/api/webhooks/1/x",
+      "https://evil.com/api/webhooks/1/x",
+      "https://discord.com.evil.com/api/webhooks/1/x",
+      "https://discord.com@evil.com/api/webhooks/1/x",
+      "https://discord.com:8443/api/webhooks/1/x",
+      "https://discord.com/other",
+      "http://169.254.169.254/latest",
+      "ftp://discord.com/api/webhooks/1/x",
+      "no-es-url",
+    ]) {
       expect(isAllowedWebhookUrl(bad)).toBe(false);
     }
   });
@@ -117,7 +146,8 @@ describe("motor de alertas", () => {
   test("donación sobre el umbral: alert_event, bus y Discord (sin menciones); bajo el umbral nada; cooldown", async () => {
     bus.length = 0;
     discordCalls.length = 0;
-    const don = (usd: number) => mk("donation", { kind: "gift", amountMinor: usd, currency: "TIKTOK_COIN", usdMinorEstimate: usd, count: 1 });
+    const don = (usd: number) =>
+      mk("donation", { kind: "gift", amountMinor: usd, currency: "TIKTOK_COIN", usdMinorEstimate: usd, count: 1 });
     env.deps.ingest.pipeline.handleEvent(don(300)); // $3: no alcanza
     await sleep(60);
     expect(bus.filter((m) => m.kind === "alert")).toHaveLength(0);
@@ -144,7 +174,16 @@ describe("motor de alertas", () => {
   });
 
   test("caída de viewers: dispara una vez (cooldown) y respeta el mínimo de espectadores", async () => {
-    const id = ((await (await t(owner, "POST", "/alerts/rules", { type: "viewers_drop", name: "Caída", params: { dropPercent: 50, windowMin: 10, minViewers: 50 }, channels: ["panel"] })).json()) as { id: string }).id;
+    const id = (
+      (await (
+        await t(owner, "POST", "/alerts/rules", {
+          type: "viewers_drop",
+          name: "Caída",
+          params: { dropPercent: 50, windowMin: 10, minViewers: 50 },
+          channels: ["panel"],
+        })
+      ).json()) as { id: string }
+    ).id;
     bus.length = 0;
     const vc = (viewers: number, channelId: string) => mk("viewer_count", { viewers }, { channelId });
     const p = env.deps.ingest.pipeline;
@@ -166,7 +205,16 @@ describe("motor de alertas", () => {
   });
 
   test("desconexión de plataforma: avisa pasado el margen y se cancela si se recupera", async () => {
-    const id = ((await (await t(owner, "POST", "/alerts/rules", { type: "platform_disconnect", name: "Caída plataforma", params: { graceSec: 1, cooldownSec: 0 }, channels: ["panel"] })).json()) as { id: string }).id;
+    const id = (
+      (await (
+        await t(owner, "POST", "/alerts/rules", {
+          type: "platform_disconnect",
+          name: "Caída plataforma",
+          params: { graceSec: 1, cooldownSec: 0 },
+          channels: ["panel"],
+        })
+      ).json()) as { id: string }
+    ).id;
     bus.length = 0;
     const spec = { id: "conn1", tenantId: org, platform: "tiktok" as const, channelId: "streamer" };
     env.deps.ingest.supervisor.notifyStatus(spec, "error");
@@ -184,7 +232,16 @@ describe("motor de alertas", () => {
   });
 
   test("heartbeat perdido: avisa una vez por silencio y se rearma con el siguiente latido", async () => {
-    const id = ((await (await t(owner, "POST", "/alerts/rules", { type: "heartbeat_lost", name: "OBS sin señal", params: { source: "obs", afterSec: 30, cooldownSec: 0 }, channels: ["panel"] })).json()) as { id: string }).id;
+    const id = (
+      (await (
+        await t(owner, "POST", "/alerts/rules", {
+          type: "heartbeat_lost",
+          name: "OBS sin señal",
+          params: { source: "obs", afterSec: 30, cooldownSec: 0 },
+          channels: ["panel"],
+        })
+      ).json()) as { id: string }
+    ).id;
     bus.length = 0;
     const engine = env.deps.alerts as any;
     engine.noteHeartbeat(org, "obs");
@@ -210,7 +267,18 @@ describe("motor de alertas", () => {
     await sleep(100);
     expect(discordCalls.some((c) => c.body.embeds[0].description.includes("prueba"))).toBe(true);
     const enc = env.deps.encryptor.encrypt("http://169.254.169.254/latest/meta-data");
-    await expect(env.deps.alerts.sendDiscord(enc, { id: "x", ruleId: null, ruleName: "n", type: "t", message: "m", at: new Date().toISOString(), channels: [], data: {} })).rejects.toThrow("no permitida");
+    await expect(
+      env.deps.alerts.sendDiscord(enc, {
+        id: "x",
+        ruleId: null,
+        ruleName: "n",
+        type: "t",
+        message: "m",
+        at: new Date().toISOString(),
+        channels: [],
+        data: {},
+      }),
+    ).rejects.toThrow("no permitida");
   });
 });
 
@@ -285,12 +353,21 @@ describe("heartbeat externo", () => {
 });
 
 describe("miembros, invitaciones y auditoría", () => {
-  const actions = async () => (await env.admin.db.select().from(schema.auditLog).where(eq(schema.auditLog.tenantId, org))).map((a) => ({ action: a.action, actor: a.actorUserId, meta: a.meta as any }));
+  const actions = async () =>
+    (await env.admin.db.select().from(schema.auditLog).where(eq(schema.auditLog.tenantId, org))).map((a) => ({
+      action: a.action,
+      actor: a.actorUserId,
+      meta: a.meta as any,
+    }));
 
   test("listado de miembros: solo members.manage; incluye invitaciones pendientes con enlace", async () => {
     expect((await t(analyst, "GET", "/members")).status).toBe(403);
     expect((await t(moderator, "GET", "/members")).status).toBe(403);
-    await env.call(owner, "POST", "/api/auth/organization/invite-member", { email: "nuevo@p7.dev", role: "moderator", organizationId: org });
+    await env.call(owner, "POST", "/api/auth/organization/invite-member", {
+      email: "nuevo@p7.dev",
+      role: "moderator",
+      organizationId: org,
+    });
     const res = (await (await t(admin, "GET", "/members")).json()) as any;
     expect(res.members.map((m: any) => m.role).sort()).toEqual(["admin", "analyst", "moderator", "owner"]);
     expect(res.members.find((m: any) => m.role === "owner").email).toBe("o@p7.dev");
@@ -310,28 +387,51 @@ describe("miembros, invitaciones y auditoría", () => {
   test("cambio de rol: un admin puede, un analista no; queda auditado con actor, antes y después", async () => {
     const members = ((await (await t(owner, "GET", "/members")).json()) as any).members;
     const modMember = members.find((m: any) => m.email === "mo@p7.dev");
-    const analystAttempt = await env.call(analyst, "POST", "/api/auth/organization/update-member-role", { memberId: modMember.id, role: "admin", organizationId: org });
+    const analystAttempt = await env.call(analyst, "POST", "/api/auth/organization/update-member-role", {
+      memberId: modMember.id,
+      role: "admin",
+      organizationId: org,
+    });
     expect(analystAttempt.status).toBeGreaterThanOrEqual(400);
 
-    const ok = await env.call(admin, "POST", "/api/auth/organization/update-member-role", { memberId: modMember.id, role: "analyst", organizationId: org });
+    const ok = await env.call(admin, "POST", "/api/auth/organization/update-member-role", {
+      memberId: modMember.id,
+      role: "analyst",
+      organizationId: org,
+    });
     expect(ok.status).toBe(200);
     const entry = (await actions()).find((x) => x.action === "member.role_change");
     expect(entry).toBeDefined();
     expect(entry!.actor).toBe(await userId("ad@p7.dev"));
     expect(entry!.meta).toMatchObject({ member: "mo@p7.dev", from: "moderator", to: "analyst" });
     // vuelve a moderador para no afectar el resto
-    await env.call(admin, "POST", "/api/auth/organization/update-member-role", { memberId: modMember.id, role: "moderator", organizationId: org });
+    await env.call(admin, "POST", "/api/auth/organization/update-member-role", {
+      memberId: modMember.id,
+      role: "moderator",
+      organizationId: org,
+    });
   });
 
   test("un admin no puede tocar al propietario ni asignar el rol owner", async () => {
     const members = ((await (await t(owner, "GET", "/members")).json()) as any).members;
     const ownerMember = members.find((m: any) => m.role === "owner");
     const anMember = members.find((m: any) => m.email === "an@p7.dev");
-    const demote = await env.call(admin, "POST", "/api/auth/organization/update-member-role", { memberId: ownerMember.id, role: "analyst", organizationId: org });
+    const demote = await env.call(admin, "POST", "/api/auth/organization/update-member-role", {
+      memberId: ownerMember.id,
+      role: "analyst",
+      organizationId: org,
+    });
     expect(demote.status).toBeGreaterThanOrEqual(400);
-    const promote = await env.call(admin, "POST", "/api/auth/organization/update-member-role", { memberId: anMember.id, role: "owner", organizationId: org });
+    const promote = await env.call(admin, "POST", "/api/auth/organization/update-member-role", {
+      memberId: anMember.id,
+      role: "owner",
+      organizationId: org,
+    });
     expect(promote.status).toBeGreaterThanOrEqual(400);
-    const remove = await env.call(admin, "POST", "/api/auth/organization/remove-member", { memberIdOrEmail: ownerMember.id, organizationId: org });
+    const remove = await env.call(admin, "POST", "/api/auth/organization/remove-member", {
+      memberIdOrEmail: ownerMember.id,
+      organizationId: org,
+    });
     expect(remove.status).toBeGreaterThanOrEqual(400);
     const del = await env.call(admin, "POST", "/api/auth/organization/delete", { organizationId: org });
     expect(del.status).toBeGreaterThanOrEqual(400);
@@ -344,7 +444,9 @@ describe("miembros, invitaciones y auditoría", () => {
     const extra = await env.signUp("extra@p7.dev");
     await invite("analyst", "extra@p7.dev", extra);
     const member = ((await (await t(owner, "GET", "/members")).json()) as any).members.find((m: any) => m.email === "extra@p7.dev");
-    expect((await env.call(admin, "POST", "/api/auth/organization/remove-member", { memberIdOrEmail: member.id, organizationId: org })).status).toBe(200);
+    expect(
+      (await env.call(admin, "POST", "/api/auth/organization/remove-member", { memberIdOrEmail: member.id, organizationId: org })).status,
+    ).toBe(200);
     const e = (await actions()).find((x) => x.action === "member.remove");
     expect(e?.meta).toMatchObject({ member: "extra@p7.dev", role: "analyst" });
     expect(e?.actor).toBe(await userId("ad@p7.dev"));
@@ -356,7 +458,9 @@ describe("miembros, invitaciones y auditoría", () => {
     const adminMember = members.find((m: any) => m.email === "ad@p7.dev");
     expect((await t(admin, "POST", "/members/transfer-ownership", { memberId: adminMember.id })).status).toBe(403);
     expect((await t(owner, "POST", "/members/transfer-ownership", { memberId: "inexistente" })).status).toBe(404);
-    expect((await t(owner, "POST", "/members/transfer-ownership", { memberId: members.find((m: any) => m.role === "owner").id })).status).toBe(400);
+    expect(
+      (await t(owner, "POST", "/members/transfer-ownership", { memberId: members.find((m: any) => m.role === "owner").id })).status,
+    ).toBe(400);
     expect((await t(owner, "POST", "/members/transfer-ownership", { memberId: adminMember.id })).status).toBe(200);
     const after = ((await (await t(admin, "GET", "/members")).json()) as any).members;
     expect(after.find((m: any) => m.email === "ad@p7.dev").role).toBe("owner");

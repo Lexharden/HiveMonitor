@@ -68,7 +68,14 @@
   <p class="text-fg-2">{t("chat.noPermission")}</p>
 {:else}
   <div class="card relative">
-    <div bind:this={box} onscroll={onScroll} class="h-[calc(100dvh-11rem)] min-h-80 overflow-y-auto p-2" role="log" aria-live="off" aria-label={t("chat.title")}>
+    <div
+      bind:this={box}
+      onscroll={onScroll}
+      class="h-[calc(100dvh-11rem)] min-h-80 overflow-y-auto p-2"
+      role="log"
+      aria-live="off"
+      aria-label={t("chat.title")}
+    >
       {#if messages.length === 0}
         <p class="p-6 text-center text-sm text-fg-3">{t("chat.empty")}</p>
       {/if}
@@ -97,7 +104,12 @@
       </button>
     {/if}
     {#if toast}
-      <p class="absolute right-3 top-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm {toast.ok ? 'text-good' : 'text-bad'}" role="status">{toast.text}</p>
+      <p
+        class="absolute right-3 top-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm {toast.ok ? 'text-good' : 'text-bad'}"
+        role="status"
+      >
+        {toast.text}
+      </p>
     {/if}
   </div>
 {/if}

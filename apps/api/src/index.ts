@@ -1,95 +1,98 @@
-import { fileURLToPath } from "node:url";
-import { createDb, migrate } from "@hivemonitor/db";
-import { websocket } from "hono/bun";
-import { sql } from "drizzle-orm";
-import { createApp } from "./app.ts";
-import { createAuth } from "./auth.ts";
-import { InProcessBus } from "./bus/in-process.ts";
-import { createIngest } from "./ingest/manager.ts";
-import { IngestPipeline } from "./ingest/pipeline.ts";
-import { buildCsp } from "./middleware.ts";
-import { createStaticHandler, dirSource } from "./static.ts";
-import { loadConfig } from "./config.ts";
-import { createEncryptorFromEnv } from "./crypto.ts";
-import { createTwitchService } from "./twitch/service.ts";
-import { AlertEngine } from "./alerts/engine.ts";
-import { createLogger } from "./logger.ts";
-import { startMaintenance } from "./maintenance.ts";
+/**
+ * Punto de entrada del binario único: `hivemonitor [serve|healthcheck|migrate|make-superadmin|version|help]`.
+ * Sin argumentos arranca el servidor. Los subcomandos permiten operar sin Bun ni el repositorio
+ * (p. ej. `docker compose exec app /app/hivemonitor make-superadmin correo@dominio.com`).
+ */
+import embedded from "./embedded.generated.ts";
 
-const config = loadConfig();
-const logger = createLogger(config);
+const [cmd = "serve", ...args] = process.argv.slice(2);
 
-if (config.AUTO_MIGRATE) {
-  const applied = await migrate(config.DATABASE_URL, {
-    appRolePassword: config.DATABASE_APP_PASSWORD,
-    log: (m) => logger.info(m),
-  });
-  logger.info({ applied: applied.length }, "migraciones al día");
-}
+const HELP = `HiveMonitor ${embedded.version}
 
-const admin = createDb(config.DATABASE_URL, { max: 5 });
-if (!config.DATABASE_APP_URL) {
-  logger.warn("DATABASE_APP_URL no definida: se usa DATABASE_URL y RLS NO protege (solo para desarrollo)");
-}
-const app = config.DATABASE_APP_URL ? createDb(config.DATABASE_APP_URL, { max: 10 }) : admin;
+Uso: hivemonitor [comando]
 
-const bus = new InProcessBus((err) => logger.error({ err }, "handler del bus falló"));
-const encryptor = createEncryptorFromEnv(config.ENCRYPTION_KEY);
-const twitch = createTwitchService({ config, logger, adminDb: admin.db, encryptor });
-const ingest = createIngest({ config, logger, bus, adminDb: admin.db, appDb: app.db, encryptor, factories: twitch ? { twitch: twitch.factory } : undefined });
-const alerts = new AlertEngine({ appDb: app.db, bus, encryptor, logger });
-alerts.attach(ingest.pipeline, ingest.supervisor);
-const auth = createAuth({ config, adminDb: admin.db, logger });
-const webDist = process.env.WEB_DIST ?? fileURLToPath(new URL("../../web/build", import.meta.url));
-const staticHandler = createStaticHandler(dirSource(webDist), (hashes) => buildCsp({ config }, hashes));
-const deps = {
-  config,
-  logger,
-  adminDb: admin.db,
-  appDb: app.db,
-  ping: async () => void (await admin.db.execute(sql`select 1`)),
-  auth,
-  bus,
-  ingest,
-  alerts,
-  twitch,
-  encryptor,
-  staticHandler,
-};
+  serve                          Arranca el servidor (por defecto)
+  healthcheck                    Comprueba /readyz en el puerto local (código de salida 0/1; para HEALTHCHECK)
+  migrate                        Aplica las migraciones pendientes y sale (usa DATABASE_URL)
+  make-superadmin <correo>       Marca a un usuario existente como superadmin (--revoke para quitarlo)
+  version                        Muestra la versión
 
-const orphans = await IngestPipeline.closeOrphans(admin.db);
-if (orphans) logger.info({ orphans }, "sesiones huérfanas cerradas");
+La configuración es por variables de entorno (ver .env.example).`;
 
-const stopMaintenance = startMaintenance(admin.db, config.EVENT_RETENTION_DAYS, logger);
-const server = Bun.serve({
-  hostname: config.HOST,
-  port: config.PORT,
-  idleTimeout: 120,
-  fetch: createApp(deps).fetch,
-  websocket,
-});
-logger.info({ url: `http://${config.HOST}:${server.port}` }, "HiveMonitor API escuchando");
-void ingest.startAll().then((n) => logger.info({ connections: n }, "conexiones de plataformas iniciadas"));
-
-let stopping = false;
-async function shutdown(signal: string) {
-  if (stopping) return;
-  stopping = true;
-  logger.info({ signal }, "apagado ordenado");
-  const force = setTimeout(() => process.exit(1), 15_000);
-  force.unref?.();
+async function healthcheck(): Promise<number> {
+  const port = process.env.PORT ?? "3000";
   try {
-    stopMaintenance();
-    twitch?.stop();
-    alerts.close();
-    await server.stop(); // deja terminar las peticiones en curso
-    await ingest.close(); // desconecta adaptadores y persiste lo pendiente
-    await bus.close();
-    await admin.close();
-    if (app !== admin) await app.close();
-  } finally {
-    process.exit(0);
+    const res = await fetch(`http://127.0.0.1:${port}/readyz`, { signal: AbortSignal.timeout(3000) });
+    return res.ok ? 0 : 1;
+  } catch {
+    return 1;
   }
 }
-process.on("SIGTERM", () => void shutdown("SIGTERM"));
-process.on("SIGINT", () => void shutdown("SIGINT"));
+
+async function migrateCmd(): Promise<number> {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error("DATABASE_URL es obligatoria");
+    return 1;
+  }
+  const { migrate } = await import("@hivemonitor/db");
+  const applied = await migrate(url, {
+    files: embedded.migrations ?? undefined,
+    appRolePassword: process.env.DATABASE_APP_PASSWORD,
+    log: console.log,
+  });
+  console.log(applied.length ? `${applied.length} migraciones aplicadas` : "sin migraciones pendientes");
+  return 0;
+}
+
+async function superadminCmd(): Promise<number> {
+  const email = args.find((a) => !a.startsWith("--"));
+  const revoke = args.includes("--revoke");
+  const url = process.env.DATABASE_URL;
+  if (!email || !url) {
+    console.error("Uso: DATABASE_URL=… hivemonitor make-superadmin <correo> [--revoke]");
+    return 1;
+  }
+  const { default: postgres } = await import("postgres");
+  const sql = postgres(url, { max: 1 });
+  try {
+    const rows = await sql`update "user" set is_superadmin = ${!revoke} where lower(email) = lower(${email}) returning id`;
+    if (rows.length === 0) {
+      console.error(`No existe un usuario con el correo ${email}. Regístrate primero.`);
+      return 1;
+    }
+    console.log(`${email}: superadmin = ${!revoke}`);
+    return 0;
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+switch (cmd) {
+  case "serve":
+    await import("./server.ts");
+    break;
+  case "healthcheck":
+    process.exit(await healthcheck());
+    break;
+  case "migrate":
+    process.exit(await migrateCmd());
+    break;
+  case "make-superadmin":
+    process.exit(await superadminCmd());
+    break;
+  case "version":
+  case "--version":
+    console.log(embedded.version);
+    process.exit(0);
+    break;
+  case "help":
+  case "--help":
+  case "-h":
+    console.log(HELP);
+    process.exit(0);
+    break;
+  default:
+    console.error(`Comando desconocido: ${cmd}\n\n${HELP}`);
+    process.exit(2);
+}

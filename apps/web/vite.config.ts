@@ -7,7 +7,9 @@ import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit({
+  plugins: [
+    tailwindcss(),
+    sveltekit({
       // Modo SPA (sin SSR): lo sirve la API y lo empaqueta Tauri
       adapter: adapter({ fallback: "index.html" }),
     }),

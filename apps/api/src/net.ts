@@ -35,7 +35,10 @@ export function ipInList(ip: string, list: readonly string[]): boolean {
 export function clientIp(remote: string | undefined, forwardedFor: string | null | undefined, trusted: readonly string[]): string {
   const direct = remote ? normalizeIp(remote) : "unknown";
   if (!forwardedFor || direct === "unknown" || !ipInList(direct, trusted)) return direct;
-  const hops = forwardedFor.split(",").map((s) => s.trim()).filter(Boolean);
+  const hops = forwardedFor
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   for (let i = hops.length - 1; i >= 0; i--) {
     const hop = normalizeIp(hops[i]!);
     if (!ipInList(hop, trusted)) return hop;

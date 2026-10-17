@@ -21,7 +21,10 @@
 
   const feed = $derived(
     live.events
-      .filter((e) => (TYPES as readonly string[]).includes(e.type) && types.has(e.type as FeedType) && (platform === "all" || e.platform === platform))
+      .filter(
+        (e) =>
+          (TYPES as readonly string[]).includes(e.type) && types.has(e.type as FeedType) && (platform === "all" || e.platform === platform),
+      )
       .slice(-150)
       .reverse(),
   );
@@ -29,7 +32,9 @@
   function describe(e: NormalizedEvent): string {
     switch (e.type) {
       case "donation":
-        return t("events.donated", { what: `${e.payload.count > 1 ? `${e.payload.count}× ` : ""}${e.payload.giftName ?? ""} (${fmtMoney(e.payload.amountMinor, e.payload.currency)})`.trim() });
+        return t("events.donated", {
+          what: `${e.payload.count > 1 ? `${e.payload.count}× ` : ""}${e.payload.giftName ?? ""} (${fmtMoney(e.payload.amountMinor, e.payload.currency)})`.trim(),
+        });
       case "follow":
         return t("events.followed");
       case "subscription":
@@ -55,7 +60,13 @@
 
 <div class="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Filtros">
   {#each TYPES as ty (ty)}
-    <button class="rounded-full border px-3 py-1 text-xs font-medium {types.has(ty) ? 'border-accent bg-accent/15 text-fg' : 'border-border text-fg-3'}" aria-pressed={types.has(ty)} onclick={() => toggle(ty)}>
+    <button
+      class="rounded-full border px-3 py-1 text-xs font-medium {types.has(ty)
+        ? 'border-accent bg-accent/15 text-fg'
+        : 'border-border text-fg-3'}"
+      aria-pressed={types.has(ty)}
+      onclick={() => toggle(ty)}
+    >
       {t(`events.type.${ty}` as MessageKey)}
     </button>
   {/each}

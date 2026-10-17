@@ -40,6 +40,6 @@ describe("servidor estático del SPA", () => {
     expect(await handle(new Request("http://x/", { method: "POST" }))).toBeNull();
   });
   test("solo se hashean scripts en línea, no los externos", () => {
-    expect(inlineScriptHashes("<script>a</script><script src=\"/a.js\"></script>")).toHaveLength(1);
+    expect(inlineScriptHashes('<script>a</script><script src="/a.js"></script>')).toHaveLength(1);
   });
 });

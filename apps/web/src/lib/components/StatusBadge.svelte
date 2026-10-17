@@ -16,7 +16,15 @@
 </script>
 
 <span class="inline-flex items-center gap-1.5 text-xs font-medium {s.cls}">
-  <svg viewBox="0 0 24 24" class="size-3.5" fill={status === "live" ? "currentColor" : "none"} stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+  <svg
+    viewBox="0 0 24 24"
+    class="size-3.5"
+    fill={status === "live" ? "currentColor" : "none"}
+    stroke="currentColor"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    aria-hidden="true"
+  >
     <path d={s.icon} />
   </svg>
   {queued ? t("status.queued") : t(`status.${status}` as const)}

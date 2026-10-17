@@ -41,6 +41,16 @@ export function dirSource(root: string): StaticSource {
   };
 }
 
+/** Archivos embebidos en el binario: ruta pública → ruta interna que entiende `Bun.file`. */
+export function mapSource(files: Record<string, string>): StaticSource {
+  return {
+    async get(path) {
+      const internal = files[path];
+      return internal ? { body: Bun.file(internal), type: contentType(path) } : null;
+    },
+  };
+}
+
 /** Hashes sha256 de los `<script>` en línea, para permitirlos en la CSP sin `unsafe-inline`. */
 export function inlineScriptHashes(html: string): string[] {
   const out: string[] = [];
@@ -76,7 +86,11 @@ export function createStaticHandler(source: StaticSource, baseCsp: (scriptHashes
         return new Response(asset.body, {
           headers: {
             "content-type": asset.type,
-            "cache-control": immutable ? "public, max-age=31536000, immutable" : path === "/service-worker.js" ? "no-cache" : "public, max-age=300",
+            "cache-control": immutable
+              ? "public, max-age=31536000, immutable"
+              : path === "/service-worker.js"
+                ? "no-cache"
+                : "public, max-age=300",
           },
         });
       }

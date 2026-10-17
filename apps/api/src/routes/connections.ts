@@ -44,7 +44,11 @@ export function connectionRoutes(deps: AppDeps) {
     return c.json({
       connections: rows.map((row) => {
         const rt = ingest.supervisor.get(row.id);
-        return { ...row, status: rt?.status ?? row.status, runtime: rt ? { attempts: rt.attempts, nextRetryAt: rt.nextRetryAt, queued: rt.queued, since: rt.since } : null };
+        return {
+          ...row,
+          status: rt?.status ?? row.status,
+          runtime: rt ? { attempts: rt.attempts, nextRetryAt: rt.nextRetryAt, queued: rt.queued, since: rt.since } : null,
+        };
       }),
     });
   });
@@ -91,7 +95,14 @@ export function connectionRoutes(deps: AppDeps) {
       }
       throw err;
     }
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "connection.create", target: id, meta: { platform: b.platform, channelId: b.channelId }, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "connection.create",
+      target: id,
+      meta: { platform: b.platform, channelId: b.channelId },
+      ip: c.get("ip"),
+    });
     const row = (await load(t.tenantId, id))!;
     await ingest.startConnection(row);
     return c.json({ id }, 201);
@@ -117,7 +128,13 @@ export function connectionRoutes(deps: AppDeps) {
       tx.update(schema.platformConnection).set({ enabled: false }).where(eq(schema.platformConnection.id, row.id)),
     );
     await ingest.stopConnection(row.id);
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "connection.disconnect", target: row.id, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "connection.disconnect",
+      target: row.id,
+      ip: c.get("ip"),
+    });
     return c.json({ ok: true });
   });
 
@@ -129,7 +146,14 @@ export function connectionRoutes(deps: AppDeps) {
     await withTenant(deps.appDb, t.tenantId, (tx) =>
       tx.delete(schema.platformConnection).where(and(eq(schema.platformConnection.id, row.id))),
     );
-    await audit(deps.appDb, { tenantId: t.tenantId, actorUserId: t.userId, action: "connection.delete", target: row.id, meta: { platform: row.platform }, ip: c.get("ip") });
+    await audit(deps.appDb, {
+      tenantId: t.tenantId,
+      actorUserId: t.userId,
+      action: "connection.delete",
+      target: row.id,
+      meta: { platform: row.platform },
+      ip: c.get("ip"),
+    });
     return c.json({ ok: true });
   });
 

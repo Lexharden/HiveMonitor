@@ -63,13 +63,19 @@ export class Helix {
     return body as T;
   }
 
-  async getUser(token: string, login?: string): Promise<{ id: string; login: string; display_name: string; profile_image_url?: string } | null> {
+  async getUser(
+    token: string,
+    login?: string,
+  ): Promise<{ id: string; login: string; display_name: string; profile_image_url?: string } | null> {
     const r = await this.request<{ data: any[] }>("/users", { token, query: { login } });
     return r.data[0] ?? null;
   }
 
   /** Streams en directo de los usuarios dados (máx. 100). Los que no están en directo no aparecen. */
-  async getStreams(token: string, userIds: string[]): Promise<{ user_id: string; viewer_count: number; title: string; started_at: string }[]> {
+  async getStreams(
+    token: string,
+    userIds: string[],
+  ): Promise<{ user_id: string; viewer_count: number; title: string; started_at: string }[]> {
     if (!userIds.length) return [];
     const r = await this.request<{ data: any[] }>("/streams", { token, query: { user_id: userIds, first: "100" } });
     return r.data;
@@ -80,7 +86,9 @@ export class Helix {
       token,
       method: "POST",
       query: { broadcaster_id: p.broadcasterId, moderator_id: p.moderatorId },
-      body: { data: { user_id: p.userId, ...(p.durationSec ? { duration: p.durationSec } : {}), ...(p.reason ? { reason: p.reason } : {}) } },
+      body: {
+        data: { user_id: p.userId, ...(p.durationSec ? { duration: p.durationSec } : {}), ...(p.reason ? { reason: p.reason } : {}) },
+      },
     });
   }
 
@@ -100,7 +108,10 @@ export class Helix {
     });
   }
 
-  createSubscription(token: string, body: { type: string; version: string; condition: Record<string, string>; transport: Record<string, string> }) {
+  createSubscription(
+    token: string,
+    body: { type: string; version: string; condition: Record<string, string>; transport: Record<string, string> },
+  ) {
     return this.request<{ data: { id: string }[] }>("/eventsub/subscriptions", { token, method: "POST", body });
   }
 
@@ -113,13 +124,24 @@ export class Helix {
     return this.request<{ data: { id: string; shard_count: number }[] }>("/eventsub/conduits", { token });
   }
   createConduit(token: string, shardCount = 1) {
-    return this.request<{ data: { id: string; shard_count: number }[] }>("/eventsub/conduits", { token, method: "POST", body: { shard_count: shardCount } });
+    return this.request<{ data: { id: string; shard_count: number }[] }>("/eventsub/conduits", {
+      token,
+      method: "POST",
+      body: { shard_count: shardCount },
+    });
   }
   updateShards(token: string, conduitId: string, shards: { id: string; transport: Record<string, string> }[]) {
-    return this.request<{ data: any[]; errors?: any[] }>("/eventsub/conduits/shards", { token, method: "PATCH", body: { conduit_id: conduitId, shards } });
+    return this.request<{ data: any[]; errors?: any[] }>("/eventsub/conduits/shards", {
+      token,
+      method: "PATCH",
+      body: { conduit_id: conduitId, shards },
+    });
   }
   listShards(token: string, conduitId: string) {
-    return this.request<{ data: { id: string; status: string }[] }>("/eventsub/conduits/shards", { token, query: { conduit_id: conduitId } });
+    return this.request<{ data: { id: string; status: string }[] }>("/eventsub/conduits/shards", {
+      token,
+      query: { conduit_id: conduitId },
+    });
   }
 }
 

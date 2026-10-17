@@ -67,6 +67,9 @@ export class IngestPipeline {
   private readonly lastViewerSample = new Map<string, number>();
   private readonly agg = new Aggregator();
   private readonly taps = new Set<(e: NormalizedEvent) => void>();
+  private persisted = 0;
+  private dropped = 0;
+  private flushErrors = 0;
   private pending: NormalizedEvent[] = [];
   private timer?: ReturnType<typeof setInterval>;
   private flushing: Promise<void> = Promise.resolve();
@@ -96,6 +99,11 @@ export class IngestPipeline {
     return rows.length;
   }
 
+  /** Contadores para /metrics. */
+  stats() {
+    return { pending: this.pending.length, persisted: this.persisted, dropped: this.dropped, flushErrors: this.flushErrors };
+  }
+
   /** Observador de todos los eventos (motor de alertas). Un fallo del observador nunca afecta al flujo. */
   addTap(fn: (e: NormalizedEvent) => void): () => void {
     this.taps.add(fn);
@@ -123,6 +131,7 @@ export class IngestPipeline {
         if (this.pending.length > this.o.maxPending) {
           const drop = this.pending.length - this.o.maxPending;
           this.pending.splice(0, drop);
+          this.dropped += drop;
           this.o.logger.warn({ dropped: drop }, "cola de persistencia saturada: se descartan eventos antiguos");
         }
         if (this.pending.length >= this.o.maxBatch) void this.flush();
@@ -259,9 +268,11 @@ export class IngestPipeline {
       const myStats = stats.filter((d) => d.tenantId === tenantId);
       try {
         await this.writeResilient(tenantId, events, ss, finished);
+        this.persisted += events.length;
         for (const s of ss) s.dirty = false;
       } catch (err) {
         // Fallo transitorio (conexión, timeout…): se reintenta en el siguiente ciclo
+        this.flushErrors++;
         this.o.logger.error({ err, tenantId, events: events.length }, "falló la persistencia; se reintentará");
         this.pending.unshift(...events);
         this.finished.push(...finished.filter((f) => f.tenantId === tenantId));
@@ -318,7 +329,12 @@ export class IngestPipeline {
     } catch (err) {
       if (!isDataError(err)) throw err;
       if (events.length <= 1) {
-        this.o.logger.error({ err, tenantId, eventId: events[0]?.id, type: events[0]?.type }, "evento rechazado por la base de datos: descartado");
+        this.dropped++;
+        this.persisted--; // el llamador sumará este evento como persistido
+        this.o.logger.error(
+          { err, tenantId, eventId: events[0]?.id, type: events[0]?.type },
+          "evento rechazado por la base de datos: descartado",
+        );
         if (ss.length) await this.writeTx(tenantId, [], ss, finished);
         return;
       }
@@ -334,7 +350,17 @@ export class IngestPipeline {
         const stats = s.counters as unknown as Record<string, unknown>;
         await tx
           .insert(schema.streamSession)
-          .values({ id: s.id, tenantId: s.tenantId, platform: s.platform, channelId: s.channelId, title: s.title, startedAt: s.startedAt, endedAt: s.endedAt, peakViewers: s.peak, stats })
+          .values({
+            id: s.id,
+            tenantId: s.tenantId,
+            platform: s.platform,
+            channelId: s.channelId,
+            title: s.title,
+            startedAt: s.startedAt,
+            endedAt: s.endedAt,
+            peakViewers: s.peak,
+            stats,
+          })
           .onConflictDoUpdate({ target: schema.streamSession.id, set: { title: s.title, endedAt: s.endedAt, peakViewers: s.peak, stats } });
       }
       for (let i = 0; i < events.length; i += 200) {

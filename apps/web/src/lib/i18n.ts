@@ -49,7 +49,8 @@ const es = {
   "org.name": "Nombre de la organización",
   "org.slug": "Identificador (URL)",
   "org.onboardingTitle": "Crea tu primera organización",
-  "org.onboardingText": "Una organización agrupa tus canales, miembros y datos. Los datos de cada organización están aislados de las demás.",
+  "org.onboardingText":
+    "Una organización agrupa tus canales, miembros y datos. Los datos de cada organización están aislados de las demás.",
   "org.suspended": "Esta organización está suspendida. Contacta con el administrador del sistema.",
   "org.none": "No perteneces a ninguna organización.",
 

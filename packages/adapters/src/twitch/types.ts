@@ -42,7 +42,12 @@ export interface EventSubAttachment {
 
 /** Transporte de EventSub: WebSocket (desarrollo) o conduit por webhook (producción). */
 export interface EventSubTransport {
-  attach(args: { broadcasterId: string; userToken: () => Promise<string>; scopes: string[]; listener: EventSubListener }): Promise<EventSubAttachment>;
+  attach(args: {
+    broadcasterId: string;
+    userToken: () => Promise<string>;
+    scopes: string[];
+    listener: EventSubListener;
+  }): Promise<EventSubAttachment>;
 }
 
 /** Tokens: renueva y persiste. Implementado por el servidor (cifrado en base de datos). */
@@ -64,9 +69,19 @@ export const SUBSCRIPTIONS: SubscriptionSpec[] = [
   { type: "stream.online", version: "1", required: true, condition: (b) => ({ broadcaster_user_id: b }) },
   { type: "stream.offline", version: "1", required: true, condition: (b) => ({ broadcaster_user_id: b }) },
   { type: "channel.chat.message", version: "1", scope: "user:read:chat", condition: (b) => ({ broadcaster_user_id: b, user_id: b }) },
-  { type: "channel.follow", version: "2", scope: "moderator:read:followers", condition: (b) => ({ broadcaster_user_id: b, moderator_user_id: b }) },
+  {
+    type: "channel.follow",
+    version: "2",
+    scope: "moderator:read:followers",
+    condition: (b) => ({ broadcaster_user_id: b, moderator_user_id: b }),
+  },
   { type: "channel.subscribe", version: "1", scope: "channel:read:subscriptions", condition: (b) => ({ broadcaster_user_id: b }) },
-  { type: "channel.subscription.message", version: "1", scope: "channel:read:subscriptions", condition: (b) => ({ broadcaster_user_id: b }) },
+  {
+    type: "channel.subscription.message",
+    version: "1",
+    scope: "channel:read:subscriptions",
+    condition: (b) => ({ broadcaster_user_id: b }),
+  },
   { type: "channel.cheer", version: "1", scope: "bits:read", condition: (b) => ({ broadcaster_user_id: b }) },
   { type: "channel.raid", version: "1", condition: (b) => ({ to_broadcaster_user_id: b }) },
 ];

@@ -8,7 +8,8 @@
     members: "M16 11a3 3 0 100-6 3 3 0 000 6zM8 11a3 3 0 100-6 3 3 0 000 6zM2 20c0-3 3-5 6-5m8 0c3 0 6 2 6 5M8 15c2 0 3 .3 4 1",
     bell: "M6 17V11a6 6 0 0112 0v6l2 2H4l2-2zm4 4h4",
     shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z",
-    settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-2-4-2 .5-1.5-1L15 4h-4l-.5 2.5-1.5 1L7 7 5 11l2 1v1l-2 1 2 4 2-.5 1.5 1L11 20h4l.5-2.5 1.5-1 2 .5 2-4-2-1v-1z",
+    settings:
+      "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-2-4-2 .5-1.5-1L15 4h-4l-.5 2.5-1.5 1L7 7 5 11l2 1v1l-2 1 2 4 2-.5 1.5 1L11 20h4l.5-2.5 1.5-1 2 .5 2-4-2-1v-1z",
     sun: "M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5",
     moon: "M20 14A8 8 0 0110 4a8 8 0 1010 10z",
     out: "M9 4H5v16h4m4-4l4-4-4-4m4 4H9",
@@ -22,6 +23,15 @@
   let { name, class: cls = "size-5" }: { name: IconName; class?: string } = $props();
 </script>
 
-<svg viewBox="0 0 24 24" class={cls} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<svg
+  viewBox="0 0 24 24"
+  class={cls}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.8"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
   <path d={paths[name]} />
 </svg>

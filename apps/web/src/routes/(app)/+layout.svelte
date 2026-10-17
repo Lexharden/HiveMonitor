@@ -80,7 +80,9 @@
         {#each items as it (it.href)}
           <a
             href={it.href}
-            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {isActive(it.href) ? 'bg-surface-2 text-fg' : 'text-fg-2 hover:bg-surface-2'}"
+            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {isActive(it.href)
+              ? 'bg-surface-2 text-fg'
+              : 'text-fg-2 hover:bg-surface-2'}"
             aria-current={isActive(it.href) ? "page" : undefined}
           >
             <Icon name={it.icon} />{t(it.label)}
@@ -104,7 +106,12 @@
     <!-- Cabecera móvil -->
     <header class="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-3 md:hidden">
       <span class="font-semibold">{t("app.name")}</span>
-      <select class="input !w-auto max-w-[55%]" value={app.org.id} onchange={(e) => app.setOrg(e.currentTarget.value)} aria-label={t("org.select")}>
+      <select
+        class="input !w-auto max-w-[55%]"
+        value={app.org.id}
+        onchange={(e) => app.setOrg(e.currentTarget.value)}
+        aria-label={t("org.select")}
+      >
         {#each app.orgs as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
       </select>
     </header>
@@ -125,7 +132,11 @@
     <!-- Navegación inferior (móvil) -->
     <nav class="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface md:hidden" aria-label="Principal">
       {#each items as it (it.href)}
-        <a href={it.href} class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] {isActive(it.href) ? 'text-accent' : 'text-fg-3'}" aria-current={isActive(it.href) ? "page" : undefined}>
+        <a
+          href={it.href}
+          class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] {isActive(it.href) ? 'text-accent' : 'text-fg-3'}"
+          aria-current={isActive(it.href) ? "page" : undefined}
+        >
           <Icon name={it.icon} />{t(it.label)}
         </a>
       {/each}
