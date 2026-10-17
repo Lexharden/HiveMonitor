@@ -42,10 +42,11 @@ type ErrorKind = "offline" | "rate_limited" | "invalid_user" | "other";
 /** Clasificación por nombre de clase (se conservan en la librería) para no depender de `instanceof`. */
 export function classifyTikTokError(err: unknown): { kind: ErrorKind; retryInMs?: number } {
   for (let e: any = err; e; e = e.cause ?? e.exception) {
-    const name: string = e?.constructor?.name ?? e?.name ?? "";
-    if (name === "UserOfflineError") return { kind: "offline" };
-    if (name === "InvalidUniqueIdError") return { kind: "invalid_user" };
-    if (name === "SignatureRateLimitError") {
+    // `name` y nombre de la clase: el minificado puede renombrar una de las dos cosas
+    const names = [e?.name, e?.constructor?.name];
+    if (names.includes("UserOfflineError")) return { kind: "offline" };
+    if (names.includes("InvalidUniqueIdError")) return { kind: "invalid_user" };
+    if (names.includes("SignatureRateLimitError")) {
       const retryAfter = Number(e.retryAfter);
       // La librería informa segundos
       return { kind: "rate_limited", retryInMs: Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter * 1000) : 60_000 };

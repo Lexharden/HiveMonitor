@@ -15,6 +15,7 @@ apps/desktop   Tauri 2: cliente de escritorio y Android (no ejecuta lógica de s
 packages/core  eventos normalizados, permisos, roles, contratos de adaptador y bus
 packages/db    esquema Drizzle, migraciones SQL, RLS por tenant
 packages/adapters  mock/replay, TikTok, Twitch, YouTube (stub)
+apps/tiktok-bridge Rust + piratetok-live-rs: conexión a TikTok LIVE gratis, sin API key
 packages/client    SDK tipado (web y desktop)
 deploy/        Containerfile, compose, Quadlet (Podman), systemd
 scripts/       build del binario, backup/restore, utilidades de desarrollo

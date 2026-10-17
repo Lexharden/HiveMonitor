@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [0.2.0] - 2026-10-17
+
+### Añadido
+
+- `apps/tiktok-bridge`: puente en Rust sobre `piratetok-live-rs` (sin servicio de firma ni API key), proveedor de TikTok por defecto
+  (`TIKTOK_PROVIDER=bridge`); `tiktok-live-connector` queda como respaldo (`connector`).
+- Configuración de Nginx nativo con TLS y sin TLS (`deploy/nginx/`).
+
+### Cambiado
+
+- El binario se compila sin minificar identificadores, para que los errores de las librerías se reconozcan por nombre.
+
 ## [0.1.0] - 2026-10-17
 
 Primera versión.

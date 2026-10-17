@@ -10,9 +10,18 @@ RUN bun install --frozen-lockfile
 ARG TARGET=linux-x64
 RUN bun scripts/build-binary.ts --targets=${TARGET} && mv dist/hivemonitor-${TARGET} /hivemonitor && chmod 755 /hivemonitor
 
+# --- 1b) Puente de TikTok (Rust, piratetok-live-rs) ---
+FROM docker.io/library/rust:1-bookworm AS bridge
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY apps/tiktok-bridge ./
+RUN cargo build --release --locked
+
 # --- 2) Imagen final: sin shell ni gestor de paquetes, usuario no root ---
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=build /hivemonitor /app/hivemonitor
+# Junto al binario principal: HiveMonitor lo encuentra solo (TIKTOK_BRIDGE_PATH opcional)
+COPY --from=bridge /src/target/release/tiktok-bridge /app/tiktok-bridge
 USER 65532:65532
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 EXPOSE 3000
