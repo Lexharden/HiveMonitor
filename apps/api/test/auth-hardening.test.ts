@@ -153,3 +153,42 @@ describe("verificación de correo y recuperación de contraseña", () => {
     expect(await resetUserPassword(e.deps.auth, e.admin.db, "noexiste@x.dev")).toBeNull();
   }, 120_000);
 });
+
+describe("login social y política de registro", () => {
+  // Es la misma ruta que usa el callback de OAuth (Twitch/Google) para crear un usuario nuevo
+  const oauthSignup = async (e: TestEnv, email: string) => {
+    const ctx = await e.deps.auth.$context;
+    return ctx.internalAdapter.createOAuthUser(
+      { email, name: "Social", emailVerified: true },
+      { providerId: "twitch", accountId: `acc-${email}`, accessToken: "x" },
+    );
+  };
+
+  test("invite: un usuario NUEVO por Twitch/Google sin invitación se rechaza; con invitación a ese correo, entra", async () => {
+    const e = await env({ SIGNUP_MODE: "invite" });
+    const owner = (await signUp(e, "owner@s.dev")).headers.get("set-auth-token")!;
+    const org = ((await (await e.call(owner, "POST", "/api/auth/organization/create", { name: "O", slug: "o" })).json()) as { id: string })
+      .id;
+
+    await expect(oauthSignup(e, "intruso@s.dev")).rejects.toThrow();
+    expect(await e.admin.db.select().from(schema.user).where(eq(schema.user.email, "intruso@s.dev"))).toHaveLength(0);
+
+    await e.call(owner, "POST", "/api/auth/organization/invite-member", { email: "invitado@s.dev", role: "analyst", organizationId: org });
+    const created = await oauthSignup(e, "invitado@s.dev");
+    expect(created).toBeTruthy();
+    expect(await e.admin.db.select().from(schema.user).where(eq(schema.user.email, "invitado@s.dev"))).toHaveLength(1);
+  }, 120_000);
+
+  test("closed: tampoco entra nadie nuevo por login social; el primer usuario sí (arranque)", async () => {
+    const e = await env({ SIGNUP_MODE: "closed" });
+    expect(await oauthSignup(e, "primero@s.dev")).toBeTruthy();
+    await expect(oauthSignup(e, "segundo@s.dev")).rejects.toThrow();
+  }, 120_000);
+
+  test("/api/meta/public informa de los proveedores sociales configurados", async () => {
+    const e = await env({ TWITCH_CLIENT_ID: "cid", TWITCH_CLIENT_SECRET: "sec" });
+    expect(((await (await e.call(null, "GET", "/api/meta/public")).json()) as any).socialProviders).toEqual(["twitch"]);
+    const none = await env();
+    expect(((await (await none.call(null, "GET", "/api/meta/public")).json()) as any).socialProviders).toEqual([]);
+  }, 120_000);
+});

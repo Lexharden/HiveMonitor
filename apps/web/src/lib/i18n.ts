@@ -59,6 +59,10 @@ const es = {
   "auth.checkEmail": "Revisa tu correo",
   "auth.checkEmailText": "Te enviamos un enlace para confirmar tu correo. Ábrelo y después inicia sesión.",
   "auth.notVerified": "Debes confirmar tu correo antes de entrar. Te acabamos de reenviar el enlace.",
+  "auth.socialNote": "Si ya tienes cuenta, entra con tu proveedor. Una cuenta nueva necesita una invitación.",
+  "auth.socialDenied":
+    "No se pudo iniciar sesión con el proveedor. Si es tu primera vez, recuerda que el registro es solo por invitación y debe haber una invitación para ese correo.",
+  "auth.socialError": "No se pudo iniciar sesión con el proveedor. Inténtalo de nuevo.",
   "auth.signupClosed": "El registro está cerrado en este servidor.",
   "auth.signupInvite": "El registro es solo por invitación: usa el correo al que llegó la invitación.",
   "auth.firstRun": "Instalación nueva: la primera cuenta que se registre será la del administrador.",
