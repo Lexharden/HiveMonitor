@@ -1,0 +1,11 @@
+.git
+node_modules
+**/node_modules
+**/target
+**/.svelte-kit
+dist
+.dev-data
+.shots
+.env
+.env.*
+!.env.example
