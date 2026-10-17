@@ -5,6 +5,14 @@ import { schema, withTenant } from "@hivemonitor/db";
 import { createTestEnv, type TestEnv } from "./helpers.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Espera (hasta 3 s) a que se cumpla una condición asíncrona: los marcadores se guardan en segundo plano. */
+async function until(cond: () => Promise<boolean> | boolean, ms = 3000) {
+  const start = Date.now();
+  while (!(await cond())) {
+    if (Date.now() - start > ms) throw new Error("timeout esperando la condición");
+    await sleep(20);
+  }
+}
 let env: TestEnv;
 let owner: string;
 let admin: string;
@@ -61,7 +69,7 @@ describe("marcadores automáticos", () => {
   test("un raid se marca con su origen y número de espectadores", async () => {
     const p = env.deps.ingest.pipeline;
     p.handleEvent(ev("raid", { viewers: 42, fromChannel: "otro_canal" }));
-    await sleep(80);
+    await until(async () => (await markers()).some((x) => x.kind === "raid"));
     const m = (await markers()).find((x) => x.kind === "raid");
     expect(m?.label).toContain("otro_canal");
     expect(m?.label).toContain("42");
@@ -74,7 +82,8 @@ describe("marcadores automáticos", () => {
       ev("donation", { kind: "gift", amountMinor: usd, currency: "TIKTOK_COIN", usdMinorEstimate: usd, count: 1 });
     env.deps.ingest.pipeline.handleEvent(don(500)); // $5: no
     env.deps.ingest.pipeline.handleEvent(don(2500)); // $25: sí
-    await sleep(80);
+    await until(async () => (await markers()).some((x) => x.kind === "donation"));
+    await sleep(60); // margen para comprobar que la de $5 no genera otro
     const ds = (await markers()).filter((x) => x.kind === "donation");
     expect(ds).toHaveLength(1);
     expect(ds[0]!.label).toContain("$25.00");
@@ -89,7 +98,8 @@ describe("marcadores automáticos", () => {
     for (const v of [100, 101, 99, 100]) p.handleEvent(vc(v, "pico"));
     p.handleEvent(vc(180, "pico"));
     p.handleEvent(vc(260, "pico")); // dentro del cooldown
-    await sleep(120);
+    await until(async () => (await markers()).some((x) => x.kind === "viewers_spike"));
+    await sleep(100); // margen para comprobar que el cooldown evita el segundo
     const spikes = (await markers()).filter((x) => x.kind === "viewers_spike");
     expect(spikes).toHaveLength(1);
     expect(spikes[0]).toMatchObject({ channelId: "pico", platform: "tiktok" });

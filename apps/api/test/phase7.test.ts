@@ -7,6 +7,14 @@ import { sha256Hex } from "../src/crypto.ts";
 import { createTestEnv, type TestEnv } from "./helpers.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Espera (hasta 4 s) a que se cumpla una condición: las alertas se evalúan y entregan en segundo plano. */
+async function until(cond: () => boolean | Promise<boolean>, ms = 4000) {
+  const start = Date.now();
+  while (!(await cond())) {
+    if (Date.now() - start > ms) throw new Error("timeout esperando la condición");
+    await sleep(20);
+  }
+}
 const DISCORD = "https://discord.com/api/webhooks/123456789012345678/abc-DEF_123";
 
 const discordCalls: { url: string; body: any }[] = [];
@@ -153,7 +161,8 @@ describe("motor de alertas", () => {
     expect(bus.filter((m) => m.kind === "alert")).toHaveLength(0);
     env.deps.ingest.pipeline.handleEvent(don(1000)); // $10
     env.deps.ingest.pipeline.handleEvent(don(2000)); // dentro del cooldown (5 s)
-    await sleep(150);
+    await until(() => bus.some((m) => m.kind === "alert") && discordCalls.length >= 1);
+    await sleep(100); // margen para comprobar que el cooldown evita la segunda
     const alerts = bus.filter((m) => m.kind === "alert");
     expect(alerts).toHaveLength(1);
     expect((alerts[0] as any).alert).toMatchObject({ type: "donation_over", ruleName: "Donación grande" });
@@ -197,7 +206,8 @@ describe("motor de alertas", () => {
     expect(bus.filter((m) => m.kind === "alert")).toHaveLength(0);
     p.handleEvent(vc(80, "grande"));
     p.handleEvent(vc(60, "grande")); // cooldown
-    await sleep(100);
+    await until(() => bus.some((m) => m.kind === "alert"));
+    await sleep(100); // margen para comprobar que el cooldown evita la segunda
     const a = bus.filter((m) => m.kind === "alert") as any[];
     expect(a).toHaveLength(1);
     expect(a[0].alert.data).toMatchObject({ from: 200, to: 80, channelId: "grande" });
@@ -250,6 +260,7 @@ describe("motor de alertas", () => {
     engine.heartbeats.get(`${org}|otro-origen`).at = Date.now() - 120_000; // no coincide con la regla
     await engine.checkHeartbeats();
     await engine.checkHeartbeats(); // no repite
+    await until(() => bus.some((m) => m.kind === "alert"));
     await sleep(60);
     const a = bus.filter((m) => m.kind === "alert") as any[];
     expect(a).toHaveLength(1);
@@ -264,7 +275,7 @@ describe("motor de alertas", () => {
     const ruleId = (await withTenant(env.app.db, org, (tx) => tx.select().from(schema.alertRule)))[0]!.id;
     const r = await t(owner, "POST", `/alerts/rules/${ruleId}/test`);
     expect(r.status).toBe(200);
-    await sleep(100);
+    await until(() => discordCalls.length > 0);
     expect(discordCalls.some((c) => c.body.embeds[0].description.includes("prueba"))).toBe(true);
     const enc = env.deps.encryptor.encrypt("http://169.254.169.254/latest/meta-data");
     await expect(

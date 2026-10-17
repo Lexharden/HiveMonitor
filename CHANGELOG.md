@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versionado [SemVer](https://semver.org/lang/es/).
 
+## [0.4.0] - 2026-10-17
+
+### Añadido
+
+- Cockpit: **vista previa del directo** (reproductor oficial de Twitch incrustado, sin sonido por defecto; TikTok no permite incrustar, por lo que ofrece un
+  botón que lo abre en otra pestaña). La CSP permite únicamente `frame-src https://player.twitch.tv`.
+
+### Corregido
+
+- Login: los botones de Twitch/Google solo aparecen si el proveedor está configurado; al volver rechazado (cuenta nueva sin invitación) se muestra un mensaje claro.
+- Tests que demuestran que `SIGNUP_MODE` también se aplica al registro con login social.
+
 ## [0.3.0] - 2026-10-17
 
 ### Añadido
