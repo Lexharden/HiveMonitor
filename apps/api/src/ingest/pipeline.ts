@@ -1,5 +1,6 @@
 import { schema, withTenant, type Database } from "@hivemonitor/db";
 import { isNull, sql } from "drizzle-orm";
+import { Aggregator, toDays, type HourDelta } from "./aggregator.ts";
 import type { EventBus, NormalizedEvent, Platform } from "@hivemonitor/core";
 import type { Logger } from "../logger.ts";
 
@@ -64,6 +65,7 @@ export class IngestPipeline {
   private readonly recentByTenant = new Map<string, NormalizedEvent[]>();
   private readonly sessions = new Map<string, Session>();
   private readonly lastViewerSample = new Map<string, number>();
+  private readonly agg = new Aggregator();
   private pending: NormalizedEvent[] = [];
   private timer?: ReturnType<typeof setInterval>;
   private flushing: Promise<void> = Promise.resolve();
@@ -127,6 +129,7 @@ export class IngestPipeline {
 
   /** Mantiene la sesión de directo y los contadores a partir del flujo de eventos. */
   private track(e: NormalizedEvent): void {
+    this.agg.add(e);
     const k = key(e.tenantId, e.platform, e.channelId);
     let s = this.sessions.get(k);
     if (e.type === "stream_end") {
@@ -229,15 +232,17 @@ export class IngestPipeline {
     }
     const batch = this.pending;
     this.pending = [];
+    const stats = this.agg.drain();
     const sessions = [...this.sessions.values(), ...this.finished].filter((s) => s.dirty);
     const finished = this.finished;
     this.finished = [];
-    if (batch.length === 0 && sessions.length === 0) return;
+    if (batch.length === 0 && sessions.length === 0 && stats.length === 0) return;
 
-    const tenants = new Set<string>([...batch.map((e) => e.tenantId), ...sessions.map((s) => s.tenantId)]);
+    const tenants = new Set<string>([...batch.map((e) => e.tenantId), ...sessions.map((s) => s.tenantId), ...stats.map((d) => d.tenantId)]);
     for (const tenantId of tenants) {
       const events = batch.filter((e) => e.tenantId === tenantId);
       const ss = sessions.filter((s) => s.tenantId === tenantId);
+      const myStats = stats.filter((d) => d.tenantId === tenantId);
       try {
         await this.writeResilient(tenantId, events, ss, finished);
         for (const s of ss) s.dirty = false;
@@ -247,7 +252,46 @@ export class IngestPipeline {
         this.pending.unshift(...events);
         this.finished.push(...finished.filter((f) => f.tenantId === tenantId));
       }
+      try {
+        if (myStats.length) await this.writeStats(tenantId, myStats);
+      } catch (err) {
+        // Los deltas son aditivos: se devuelven para el siguiente ciclo (sin duplicar ni perder)
+        this.o.logger.error({ err, tenantId }, "falló el volcado de estadísticas; se reintentará");
+        this.agg.restore(myStats);
+      }
     }
+  }
+
+  /** Upsert aditivo en stats_hourly y stats_daily (mismo cálculo de media ponderada). */
+  private async writeStats(tenantId: string, hours: HourDelta[]): Promise<void> {
+    await withTenant(this.o.appDb, tenantId, async (tx) => {
+      for (const h of hours) {
+        const avg = h.viewerSamples ? h.viewerSum / h.viewerSamples : 0;
+        await tx.execute(sql`insert into stats_hourly (tenant_id, platform, bucket, viewers_peak, viewers_avg, viewer_samples, donations_minor, messages, new_followers)
+          values (${h.tenantId}, ${h.platform}, ${new Date(h.hour).toISOString()}::timestamptz, ${h.peak}, ${avg}, ${h.viewerSamples}, ${h.donationsMinor}, ${h.messages}, ${h.followers})
+          on conflict (tenant_id, platform, bucket) do update set
+            viewers_peak = greatest(stats_hourly.viewers_peak, excluded.viewers_peak),
+            viewers_avg = case when stats_hourly.viewer_samples + excluded.viewer_samples = 0 then 0
+              else (stats_hourly.viewers_avg * stats_hourly.viewer_samples + excluded.viewers_avg * excluded.viewer_samples) / (stats_hourly.viewer_samples + excluded.viewer_samples) end,
+            viewer_samples = stats_hourly.viewer_samples + excluded.viewer_samples,
+            donations_minor = stats_hourly.donations_minor + excluded.donations_minor,
+            messages = stats_hourly.messages + excluded.messages,
+            new_followers = stats_hourly.new_followers + excluded.new_followers`);
+      }
+      for (const d of toDays(hours)) {
+        const avg = d.viewerSamples ? d.viewerSum / d.viewerSamples : 0;
+        await tx.execute(sql`insert into stats_daily (tenant_id, platform, bucket, viewers_peak, viewers_avg, viewer_samples, donations_minor, messages, new_followers)
+          values (${d.tenantId}, ${d.platform}, ${d.day}::date, ${d.peak}, ${avg}, ${d.viewerSamples}, ${d.donationsMinor}, ${d.messages}, ${d.followers})
+          on conflict (tenant_id, platform, bucket) do update set
+            viewers_peak = greatest(stats_daily.viewers_peak, excluded.viewers_peak),
+            viewers_avg = case when stats_daily.viewer_samples + excluded.viewer_samples = 0 then 0
+              else (stats_daily.viewers_avg * stats_daily.viewer_samples + excluded.viewers_avg * excluded.viewer_samples) / (stats_daily.viewer_samples + excluded.viewer_samples) end,
+            viewer_samples = stats_daily.viewer_samples + excluded.viewer_samples,
+            donations_minor = stats_daily.donations_minor + excluded.donations_minor,
+            messages = stats_daily.messages + excluded.messages,
+            new_followers = stats_daily.new_followers + excluded.new_followers`);
+      }
+    });
   }
 
   /**

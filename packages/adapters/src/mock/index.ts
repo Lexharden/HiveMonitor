@@ -195,11 +195,8 @@ class MockAdapter implements PlatformAdapter {
     else if (r < 0.8) this.emit("like", { count: 1 + Math.floor(this.rand() * 10) }, actor);
     else if (r < 0.88) this.emit("follow", {}, actor);
     else if (r < 0.95) {
-      this.emit(
-        "donation",
-        { kind: "gift", giftName: GIFTS[Math.floor(this.rand() * GIFTS.length)], count: 1, amountMinor: 100 * (1 + Math.floor(this.rand() * 20)), currency: "TIKTOK_COIN" },
-        actor,
-      );
+      const amountMinor = 100 * (1 + Math.floor(this.rand() * 20));
+      this.emit("donation", { kind: "gift", giftName: GIFTS[Math.floor(this.rand() * GIFTS.length)], count: 1, amountMinor, currency: "TIKTOK_COIN", usdMinorEstimate: Math.round(amountMinor * 0.5) }, actor);
     } else this.emit("share", {}, actor);
   }
 }

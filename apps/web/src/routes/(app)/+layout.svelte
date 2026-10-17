@@ -22,6 +22,7 @@
     { href: "/", label: "nav.dashboard", icon: "live", need: "stream.view" },
     { href: "/chat", label: "nav.chat", icon: "chat", need: "chat.view" },
     { href: "/events", label: "nav.events", icon: "events", need: "events.view" },
+    { href: "/history", label: "nav.history", icon: "history", need: "analytics.view" },
     { href: "/integrations", label: "nav.integrations", icon: "plug", need: "integrations.manage" },
   ];
   const items = $derived(NAV.filter((i) => (!i.need || app.can(i.need)) && (!i.superadmin || app.isSuperadmin)));

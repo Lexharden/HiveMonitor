@@ -67,6 +67,57 @@ export type StreamMessage =
   | { type: "status"; data: { platform: Platform; channelId: string; status: ConnectionStatus; at: string; detail?: string } }
   | { type: "state"; state: "connecting" | "open" | "closed" };
 
+export interface Totals {
+  peakViewers: number;
+  avgViewers: number;
+  donationsMinor: number;
+  messages: number;
+  newFollowers: number;
+}
+export interface OverviewPoint {
+  bucket: string;
+  platform: Platform;
+  viewersPeak: number;
+  viewersAvg: number;
+  donationsMinor: number;
+  messages: number;
+  newFollowers: number;
+}
+export interface Overview {
+  granularity: "hour" | "day";
+  from: string;
+  to: string;
+  series: OverviewPoint[];
+  totals: Totals;
+  previous: Totals;
+}
+export interface SessionSummary {
+  id: string;
+  platform: Platform;
+  channelId: string;
+  title: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  durationSec: number;
+  peakViewers: number;
+  stats: SessionCounters;
+  live: boolean;
+}
+export interface SessionDetail {
+  session: Omit<SessionSummary, "durationSec" | "live">;
+  timeline: { t: number; v: number }[];
+  eventsByType: Record<string, number>;
+  topDonors: { id: string; name: string; currency: string; amountMinor: number; count: number }[];
+}
+export interface Donor {
+  id: string;
+  name: string;
+  currency: string;
+  amountMinor: number;
+  usdMinorEstimate: number;
+  count: number;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -174,6 +225,19 @@ export function createClient(opts: ClientOptions = {}) {
         deleteConnection: (id: string) => json(t(orgId, `/connections/${id}`), { method: "DELETE" }),
         /** Inicia la autorización OAuth de Twitch; devuelve la URL a abrir. */
         twitchAuthorize: (client: "web" | "native") => post<{ url: string }>(t(orgId, "/integrations/twitch/authorize"), { client }),
+        analytics: {
+          overview: (days: number, platform?: Platform) => json<Overview>(t(orgId, `/analytics/overview?days=${days}${platform ? `&platform=${platform}` : ""}`)),
+          sessions: (opts: { limit?: number; before?: string; platform?: Platform } = {}) => {
+            const q = new URLSearchParams();
+            if (opts.limit) q.set("limit", String(opts.limit));
+            if (opts.before) q.set("before", opts.before);
+            if (opts.platform) q.set("platform", opts.platform);
+            return json<{ sessions: SessionSummary[]; nextBefore: string | null }>(t(orgId, `/analytics/sessions?${q}`));
+          },
+          session: (id: string) => json<SessionDetail>(t(orgId, `/analytics/sessions/${encodeURIComponent(id)}`)),
+          topDonors: (days: number, limit = 10, platform?: Platform) =>
+            json<{ from: string; donors: Donor[] }>(t(orgId, `/analytics/top-donors?days=${days}&limit=${limit}${platform ? `&platform=${platform}` : ""}`)),
+        },
         live: () => json<{ channels: LiveChannel[]; connections: RuntimeConnection[]; serverTime: string }>(t(orgId, "/live")),
         audit: (limit = 50) => json<{ entries: { id: string; action: string; target: string | null; at: string; actorUserId: string | null; meta: unknown }[] }>(t(orgId, `/audit?limit=${limit}`)),
         stream: (onMessage: (m: StreamMessage) => void) => openStream(orgId, onMessage),

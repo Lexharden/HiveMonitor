@@ -31,3 +31,16 @@ export function fmtMoney(amountMinor: number, currency: string): string {
     return `${amountMinor / 100} ${currency}`;
   }
 }
+
+export const fmtDate = (d: Date | string | number) => new Date(d).toLocaleDateString("es", { day: "numeric", month: "short" });
+export const fmtDateTime = (d: Date | string | number) =>
+  new Date(d).toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+/** Céntimos de USD → "$12.34". */
+export const fmtUsd = (minor: number) => new Intl.NumberFormat("es", { style: "currency", currency: "USD" }).format(minor / 100);
+
+/** Variación porcentual respecto al periodo anterior; null si no hay base de comparación. */
+export function pctChange(cur: number, prev: number): number | null {
+  if (prev === 0) return cur === 0 ? 0 : null;
+  return Math.round(((cur - prev) / prev) * 100);
+}

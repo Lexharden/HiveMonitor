@@ -8,7 +8,18 @@
     history,
     now,
     rangeMs,
-  }: { history: Record<string, ViewerPoint[]>; now: number; rangeMs: number } = $props();
+    axisFormat = (tm: number) => fmtTime(tm).slice(0, 5),
+    tipFormat = fmtTime,
+    title = t("dash.viewersOverTime"),
+  }: {
+    history: Record<string, ViewerPoint[]>;
+    now: number;
+    rangeMs: number;
+    /** Formato de las etiquetas del eje X y del tooltip (por defecto, hora). */
+    axisFormat?: (t: number) => string;
+    tipFormat?: (t: number) => string;
+    title?: string;
+  } = $props();
 
   const ORDER: Platform[] = ["tiktok", "twitch", "youtube"];
   const COLOR: Record<Platform, string> = { tiktok: "var(--series-1)", twitch: "var(--series-2)", youtube: "var(--series-3)" };
@@ -128,7 +139,7 @@
         <tbody>
           {#each tableRows as r (r.tm)}
             <tr class="border-t border-border">
-              <td class="py-1 pr-4 text-fg-2">{fmtTime(r.tm)}</td>
+              <td class="py-1 pr-4 text-fg-2">{tipFormat(r.tm)}</td>
               {#each r.values as v, i (i)}<td class="py-1 pr-4">{v === null ? "–" : fmtNumber(v)}</td>{/each}
             </tr>
           {/each}
@@ -142,7 +153,7 @@
       class="block w-full touch-pan-y select-none"
       style:height="{H}px"
       role="img"
-      aria-label="{t('dash.viewersOverTime')}. {summary}"
+      aria-label="{title}. {summary}"
       onpointermove={onMove}
       onpointerleave={() => (hoverT = null)}
     >
@@ -152,7 +163,7 @@
         <text x={M.left - 8} y={y(v) + 4} text-anchor="end" font-size="11" fill="var(--fg-3)" class="tabular-nums">{fmtNumber(v)}</text>
       {/each}
       {#each xTicks as tm (tm)}
-        <text x={x(tm)} y={H - 6} text-anchor={tm === xTicks[0] ? "start" : "middle"} font-size="11" fill="var(--fg-3)">{fmtTime(tm).slice(0, 5)}</text>
+        <text x={x(tm)} y={H - 6} text-anchor={tm === xTicks[0] ? "start" : "middle"} font-size="11" fill="var(--fg-3)">{axisFormat(tm)}</text>
       {/each}
 
       {#each series as s (s.platform)}
@@ -181,7 +192,7 @@
         style:left="{Math.min(Math.max(x(hover.t) + 12, 0), width - 150)}px"
         style:top="40px"
       >
-        <p class="mb-1 font-medium text-fg-2">{fmtTime(hover.t)}</p>
+        <p class="mb-1 font-medium text-fg-2">{tipFormat(hover.t)}</p>
         {#each hover.rows as r (r.platform)}
           <p class="flex items-center gap-2">
             <span class="size-2 rounded-sm" style:background={COLOR[r.platform]}></span>

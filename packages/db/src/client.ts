@@ -16,7 +16,8 @@ export function createDb(url: string, opts: { max?: number } = {}): DbHandle {
   const client = postgres(url, {
     max: opts.max ?? 10,
     onnotice: () => {},
-    // Los timestamptz como Date; jsonb se (de)serializa solo
+    // Todo el sistema trabaja en UTC (buckets de estadísticas, particiones): nunca depender de la TZ del servidor
+    connection: { TimeZone: "UTC" },
   });
   return { db: drizzle(client, { schema }), sql: client, close: () => client.end({ timeout: 5 }) };
 }

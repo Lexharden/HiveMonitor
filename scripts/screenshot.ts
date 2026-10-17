@@ -88,6 +88,8 @@ await goto("/events", 3000);
 await shot("04-events");
 await goto("/integrations", 2000);
 await shot("05-integrations");
+await goto("/history", 3500);
+await shot("07-history");
 await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await goto("/", 4000);
 await shot("06-dashboard-mobile");
