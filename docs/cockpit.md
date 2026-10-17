@@ -15,6 +15,7 @@ con la insignia de cada una.
 | Top donadores | los 5 mayores de la sesión (se suman entre plataformas) |
 | Chat | unificado; **resalta** donadores, menciones al canal, preguntas, mods, suscriptores y gente nueva; filtro «solo importantes»; toca un mensaje para silenciar/borrar/expulsar |
 | Actividad | donaciones, seguidores, suscripciones, raids y compartidos |
+| Vista previa | el directo de **Twitch** incrustado (reproductor oficial, sin sonido por defecto) para comprobar que todo funciona sin salir; TikTok no permite incrustar, así que ofrece un botón que lo abre en otra pestaña |
 | Momentos | raids, picos de espectadores y donaciones grandes (automáticos) y los que marques tú |
 
 ## Controles
@@ -47,3 +48,13 @@ las donaciones de la **sesión en curso** (las monedas de TikTok y los bits usan
 
 Migración `0002_cockpit.sql` (se aplica sola): tablas `stream_marker` y `tenant_pref`, ambas con RLS por tenant.
 Endpoints: `GET/POST /api/t/:id/markers`, `DELETE /markers/:id`, `GET/PUT /goal`; evento SSE `marker`.
+
+## Vista previa del directo
+
+Se despliega con **Ver directo** (la preferencia se recuerda). Detalles:
+
+- **Twitch**: reproductor oficial (`player.twitch.tv`) con `parent` = el dominio desde el que abres HiveMonitor. Va **sin sonido** para que no haga eco con tu micrófono.
+- **TikTok**: no existe un reproductor incrustable para directos (la página de TikTok bloquea los iframes). Se muestra un botón «Abrir en TikTok».
+- **App Tauri/Android**: el reproductor de Twitch no funciona dentro de la app (no tiene un dominio válido para `parent`); usa el navegador.
+- La CSP del servidor permite únicamente `frame-src https://player.twitch.tv`.
+- Ojo con el retardo: el reproductor de Twitch va unos segundos por detrás del directo real; no lo uses para sincronizar con el chat.
